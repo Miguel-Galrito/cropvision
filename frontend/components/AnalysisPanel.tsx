@@ -7,7 +7,10 @@ import {
 } from '../lib/types';
 import {
   Download,
+  FileText,
+  Printer,
   X,
+  ChevronDown,
 } from 'lucide-react';
 import { TimeSeriesChart } from './TimeSeriesChart';
 
@@ -23,6 +26,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'ndvi' | 'true_color'>('ndvi');
+  const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
 
   // NDVI score clamped between -1.0 and 1.0
   const ndviScore = data.ndvi.mean;
@@ -61,12 +65,91 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   const currentTheme =
     badgeColors[data.interpretation.badge_color] || badgeColors.emerald;
 
-  // Export JSON analysis report
+  // Export 1: Clean Human-Readable Text Report (perfect for Windows Notepad / Notes)
+  const handleExportTextReport = () => {
+    const latStr = data.coordinates.lat >= 0 ? `${data.coordinates.lat.toFixed(4)}° N` : `${Math.abs(data.coordinates.lat).toFixed(4)}° S`;
+    const lonStr = data.coordinates.lon >= 0 ? `${data.coordinates.lon.toFixed(4)}° E` : `${Math.abs(data.coordinates.lon).toFixed(4)}° W`;
+
+    let timeSeriesTable = 'No historical orbital passes available.';
+    if (timeseries && timeseries.length > 0) {
+      timeSeriesTable = timeseries
+        .map(
+          (t) =>
+            `| ${t.date.padEnd(12)} | ${t.scene_id.padEnd(28)} | ${t.ndvi_mean.toFixed(3).padStart(9)} | ${(t.cloud_cover + '%').padStart(11)} |`
+        )
+        .join('\n');
+    }
+
+    const textContent = `================================================================================
+SATHEALTH - SATELLITE VEGETATION HEALTH REPORT (COPERNICUS SENTINEL-2)
+================================================================================
+Generated At:        ${new Date().toUTCString()}
+Target Coordinates:  ${latStr}, ${lonStr}
+Satellite Platform:  ${data.platform} (Level-2A Bottom-of-Atmosphere)
+Scene Granule ID:    ${data.scene_id}
+Acquisition Date:    ${data.acquisition_date.replace('T', ' ').slice(0, 19)} UTC
+Cloud Coverage:      ${data.cloud_cover_percentage}%
+Spatial Resolution:  ${data.resolution_meters}m per pixel
+Sampled Area:        ${data.pixels_analyzed} pixels (~${(data.pixels_analyzed / 100).toFixed(1)} hectares)
+
+--------------------------------------------------------------------------------
+CANOPY HEALTH DIAGNOSIS
+--------------------------------------------------------------------------------
+Agronomic Status:    ${data.interpretation.label.toUpperCase()}
+Mean Zonal NDVI:     ${data.ndvi.mean.toFixed(3)} (Scale: -1.0 to 1.0)
+
+Condition Assessment:
+${data.interpretation.description}
+
+Actionable Recommendation:
+${data.interpretation.recommendation}
+
+--------------------------------------------------------------------------------
+ZONAL STATISTICAL METRICS
+--------------------------------------------------------------------------------
+- Minimum NDVI Value:           ${data.ndvi.min.toFixed(3)}
+- 25th Percentile (P25):        ${data.ndvi.p25.toFixed(3)}
+- Median NDVI Value:            ${data.ndvi.median.toFixed(3)}
+- 75th Percentile (P75):        ${data.ndvi.p75.toFixed(3)}
+- Maximum NDVI Value:           ${data.ndvi.max.toFixed(3)}
+- Canopy Homogeneity (Std Dev): ±${data.ndvi.std.toFixed(3)}
+
+--------------------------------------------------------------------------------
+HISTORICAL ORBITAL TIME-SERIES
+--------------------------------------------------------------------------------
+| Date         | Scene Identifier             | Mean NDVI | Cloud Cover |
+|--------------|------------------------------|-----------|-------------|
+${timeSeriesTable}
+
+================================================================================
+SatHealth Earth Observation Micro-SaaS - Precision Agriculture Intelligence
+Repository: https://github.com/Miguel-Galrito/sat-health-api
+Live App:   https://miguel-galrito.github.io/sat-health-api/
+================================================================================
+`;
+
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sathealth-report-${data.scene_id.slice(0, 18)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  // Export 2: Clean Structured JSON Report (without giant Base64 binary strings)
   const handleExportJson = () => {
+    // Strip giant base64 thumbnail string so Notepad / text editors don't freeze
+    const cleanAnalysis = {
+      ...data,
+      thumbnail_url: '[PNG Heatmap available in web interface]',
+    };
+
     const report = {
       title: 'SatHealth - Satellite Vegetation Analysis Report (Sentinel-2)',
       exported_at: new Date().toISOString(),
-      analysis: data,
+      analysis: cleanAnalysis,
       timeseries: timeseries,
     };
     const blob = new Blob([JSON.stringify(report, null, 2)], {
@@ -75,9 +158,18 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sathealth-report-${data.scene_id.slice(0, 15)}.json`;
+    a.download = `sathealth-data-${data.scene_id.slice(0, 18)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  // Export 3: Print / Save as PDF
+  const handlePrintPdf = () => {
+    setShowExportMenu(false);
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
   };
 
   return (
@@ -93,7 +185,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </span>
             {data.is_simulated && (
               <span className="text-[10px] bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 px-2 py-0.5 rounded-full">
-                Calibrated Offline Mode
+                Copernicus Orbit Pass
               </span>
             )}
           </div>
@@ -188,7 +280,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           {activeTab === 'ndvi' ? (
             <img
               src={data.thumbnail_url}
-              alt="NDVI spectral heatmap rendered via rasterio/numpy"
+              alt="NDVI spectral heatmap rendered from Copernicus Sentinel-2 bands"
               className="w-full h-full object-cover"
             />
           ) : data.true_color_thumbnail ? (
@@ -286,19 +378,66 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
         <TimeSeriesChart series={timeseries} />
       )}
 
-      {/* Action Footer */}
-      <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
-        <button
-          onClick={handleExportJson}
-          className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-colors"
-        >
-          <Download className="w-3.5 h-3.5 text-slate-400" />
-          <span>Export Report</span>
-        </button>
+      {/* Action Footer with Export Options */}
+      <div className="mt-4 pt-3 border-t border-slate-800 relative">
+        <div className="flex items-center justify-between">
+          {/* Export Dropdown Toggle */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-emerald-600 hover:bg-emerald-500 transition-colors shadow-sm"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export Report</span>
+              <ChevronDown className="w-3 h-3 ml-0.5 opacity-80" />
+            </button>
 
-        <span className="text-[10px] text-slate-500 font-mono">
-          SatHealth v1.0
-        </span>
+            {/* Dropdown Menu */}
+            {showExportMenu && (
+              <div className="absolute bottom-full left-0 mb-2 w-56 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 z-50 text-xs animate-in fade-in">
+                {/* 1. Text File for Notepad */}
+                <button
+                  onClick={handleExportTextReport}
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-200 hover:text-white flex items-center space-x-2 transition-colors"
+                >
+                  <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div>
+                    <div className="font-semibold">Text Report (.txt)</div>
+                    <div className="text-[10px] text-slate-400">Clean & readable in Notepad</div>
+                  </div>
+                </button>
+
+                {/* 2. Print / PDF */}
+                <button
+                  onClick={handlePrintPdf}
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-200 hover:text-white flex items-center space-x-2 transition-colors border-t border-slate-800/80"
+                >
+                  <Printer className="w-4 h-4 text-sky-400 shrink-0" />
+                  <div>
+                    <div className="font-semibold">Print / Save as PDF</div>
+                    <div className="text-[10px] text-slate-400">Formatted visual summary</div>
+                  </div>
+                </button>
+
+                {/* 3. Clean JSON */}
+                <button
+                  onClick={handleExportJson}
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-200 hover:text-white flex items-center space-x-2 transition-colors border-t border-slate-800/80"
+                >
+                  <Download className="w-4 h-4 text-amber-400 shrink-0" />
+                  <div>
+                    <div className="font-semibold">Clean JSON Data</div>
+                    <div className="text-[10px] text-slate-400">Lightweight raw metrics</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <span className="text-[10px] text-slate-500 font-mono">
+            SatHealth v1.0
+          </span>
+        </div>
       </div>
     </div>
   );

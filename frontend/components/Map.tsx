@@ -25,14 +25,14 @@ export const Map: React.FC<MapProps> = ({
   const mapInstanceRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
   const bboxRectRef = useRef<Rectangle | null>(null);
-  const [activeLayer, setActiveLayer] = useState<'carto' | 'satellite'>('carto');
-  const baseLayersRef = useRef<{ carto: TileLayer | null; satellite: TileLayer | null }>({
-    carto: null,
+  const [activeLayer, setActiveLayer] = useState<'streets' | 'satellite'>('streets');
+  const baseLayersRef = useRef<{ streets: TileLayer | null; satellite: TileLayer | null }>({
+    streets: null,
     satellite: null,
   });
 
   useEffect(() => {
-    // Dynamically import Leaflet only on the client
+    // Dynamically import Leaflet only on client
     if (typeof window === 'undefined' || !mapContainerRef.current) return;
 
     let isMounted = true;
@@ -47,28 +47,28 @@ export const Map: React.FC<MapProps> = ({
         zoomControl: false,
       });
 
-      // CartoDB Voyager Tile Layer
-      const cartoLayer = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      // Standard OpenStreetMap Tile Layer (Free, no API key required, no watermark)
+      const streetsLayer = L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         {
           attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          subdomains: 'abcd',
+            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
           maxZoom: 19,
+          subdomains: ['a', 'b', 'c'],
         }
       ).addTo(map);
 
-      // Esri World Imagery (Satellite) Layer
+      // Esri World Imagery (High-Resolution Satellite Layer)
       const satelliteLayer = L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         {
           attribution:
-            'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+            'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
           maxZoom: 18,
         }
       );
 
-      baseLayersRef.current = { carto: cartoLayer, satellite: satelliteLayer };
+      baseLayersRef.current = { streets: streetsLayer, satellite: satelliteLayer };
 
       // Pulsing Marker Icon
       const pulseIcon = L.divIcon({
@@ -114,7 +114,7 @@ export const Map: React.FC<MapProps> = ({
       if (!map) return;
 
       map.flyTo([lat, lon], zoom, {
-        duration: 1.2,
+        duration: 1.0,
       });
 
       if (markerRef.current) {
@@ -137,7 +137,7 @@ export const Map: React.FC<MapProps> = ({
           color: '#10b981',
           weight: 2,
           fillColor: '#10b981',
-          fillOpacity: 0.15,
+          fillOpacity: 0.18,
           dashArray: '4, 4',
         }).addTo(map);
 
@@ -146,20 +146,20 @@ export const Map: React.FC<MapProps> = ({
     });
   }, [lat, lon, zoom, bbox]);
 
-  // Toggle Basemap (CartoDB vs Satellite)
+  // Toggle Basemap (Streets vs Satellite)
   const toggleBasemap = () => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
-    const { carto, satellite } = baseLayersRef.current;
+    const { streets, satellite } = baseLayersRef.current;
 
-    if (activeLayer === 'carto') {
-      if (carto) map.removeLayer(carto);
+    if (activeLayer === 'streets') {
+      if (streets) map.removeLayer(streets);
       if (satellite) satellite.addTo(map);
       setActiveLayer('satellite');
     } else {
       if (satellite) map.removeLayer(satellite);
-      if (carto) carto.addTo(map);
-      setActiveLayer('carto');
+      if (streets) streets.addTo(map);
+      setActiveLayer('streets');
     }
   };
 
@@ -181,17 +181,17 @@ export const Map: React.FC<MapProps> = ({
         {/* Layer Switcher (Streets vs Satellite) */}
         <button
           onClick={toggleBasemap}
-          className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-950/80 backdrop-blur-md border border-slate-800 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-900 shadow-xl transition-all"
-          title="Toggle vector map and high-resolution satellite layer"
+          className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-950/90 backdrop-blur-md border border-slate-800 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-900 shadow-xl transition-all"
+          title="Toggle vector street map and high-resolution satellite imagery"
         >
           <Layers className="w-4 h-4 text-emerald-400" />
           <span className="capitalize hidden sm:inline">
-            {activeLayer === 'carto' ? 'Satellite View' : 'Street Map'}
+            {activeLayer === 'streets' ? 'Satellite View' : 'Street Map'}
           </span>
         </button>
 
         {/* Zoom In / Out Controls */}
-        <div className="flex flex-col rounded-xl overflow-hidden bg-slate-950/80 backdrop-blur-md border border-slate-800 shadow-xl">
+        <div className="flex flex-col rounded-xl overflow-hidden bg-slate-950/90 backdrop-blur-md border border-slate-800 shadow-xl">
           <button
             onClick={handleZoomIn}
             className="p-2 text-slate-300 hover:text-white hover:bg-slate-900 transition-colors border-b border-slate-800"
@@ -212,7 +212,7 @@ export const Map: React.FC<MapProps> = ({
       {/* Crosshair target helper */}
       <div className="absolute bottom-6 left-6 z-20 pointer-events-none hidden md:block">
         <div className="px-3 py-1.5 rounded-lg bg-slate-950/80 backdrop-blur-md border border-slate-800 text-[11px] text-slate-400">
-          Click anywhere on the map to analyze NDVI using Copernicus Sentinel-2
+          Click anywhere on the map to analyze NDVI with Copernicus Sentinel-2
         </div>
       </div>
     </div>

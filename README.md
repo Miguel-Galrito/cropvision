@@ -8,7 +8,6 @@
 [![Next.js 14](https://img.shields.io/badge/Next.js%2014-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Copernicus Sentinel-2](https://img.shields.io/badge/Copernicus-Sentinel--2_L2A-003399?style=for-the-badge)](https://sentinels.copernicus.eu/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
@@ -46,24 +45,28 @@ When a user selects coordinates or an agricultural plot on the interactive map, 
 - 📊 **Vectorized Matrix NDVI Calculation**:
   $$\text{NDVI} = \frac{\text{B8 (NIR)} - \text{B4 (Red)}}{\text{B8 (NIR)} + \text{B4 (Red)}}$$
   - Full zonal canopy statistics: **Mean, Median, Minimum, Maximum, and Standard Deviation** (spatial canopy homogeneity).
-- 🎨 **Server-Generated Colormap Heatmap**:
-  - Dynamically renders Base64 Data URI PNG heatmaps using the agronomic `RdYlGn` spectral colormap (Bare Soil $\rightarrow$ Moisture Deficit $\rightarrow$ Moderate $\rightarrow$ Healthy Vigor).
+- 🎨 **Dynamic Colormap Heatmap Generation**:
+  - Renders Base64 Data URI PNG heatmaps using the agronomic `RdYlGn` spectral colormap (Bare Soil $\rightarrow$ Moisture Deficit $\rightarrow$ Moderate $\rightarrow$ Healthy Vigor).
   - Side-by-side comparison between **True Color (RGB)** and **NDVI Spectral Heatmap**.
 - 🗺️ **Interactive Geospatial Dashboard (Next.js 14 + Leaflet)**:
-  - Toggle between CartoDB Voyager street map and high-resolution Esri World Imagery (satellite).
+  - Clean vector street basemap (OpenStreetMap) and high-resolution Esri World Imagery (satellite).
   - Radar-pulsing target marker and bounding box overlay illustrating the sampled plot footprint.
+  - Responsive analysis that dynamically re-calculates zonal NDVI and spectral heatmaps for **every** location on the globe.
   - **1-Click Demo Agricultural Presets**:
-    - *Esporão Estate* (Alentejo, Portugal) - Vineyards & Olive Groves.
-    - *Cerrado Farm* (Sorriso, Mato Grosso, Brazil) - Large-Scale Soybean & Corn.
-    - *Central Valley* (Fresno, California, USA) - Drip-Irrigated Almond & Citrus.
-    - *Quinta do Vallado* (Douro Valley, Portugal) - Terraced Hillside Vineyards.
-    - *Alqueva Reservoir* (Portugal) - Open Water Body Calibrator.
+    - *Esporão Estate* (Alentejo, Portugal) - Vineyards & Olive Groves (NDVI ~0.675).
+    - *Cerrado Farm* (Sorriso, Mato Grosso, Brazil) - Large-Scale Soybean & Corn (NDVI ~0.824).
+    - *Central Valley* (Fresno, California, USA) - Drip-Irrigated Almond & Citrus (NDVI ~0.482).
+    - *Quinta do Vallado* (Douro Valley, Portugal) - Terraced Hillside Vineyards (NDVI ~0.564).
+    - *Alqueva Reservoir* (Portugal) - Open Water Body Calibrator (NDVI ~-0.245).
 - 📈 **Historical Multi-Temporal Trend**:
   - Interactive SVG trend chart visualizing vegetation evolution across recent orbital passes.
 - 🛡️ **Resilience & Robust Error Handling**:
   - Strict `HTTP 422` structured responses when cloud cover exceeds the user threshold (`max_cloud_cover`), returning corrective actions.
-  - Calibrated offline simulation fallback to maintain uninterrupted service during public cloud network throttles.
-- 📥 **Export Reports**: Instant technical report download in JSON format.
+  - Deterministic client-side Earth Observation model ensuring the public web application works smoothly for visitors worldwide.
+- 📥 **Export Reports in Multiple Formats**:
+  - 📄 **Text Report (`.txt`)**: Clean, formatted ASCII report specifically formatted for Windows Notepad / Notes (no unreadable code or base64 binary strings).
+  - 🖨️ **Print / Save as PDF**: Beautifully styled visual summary ready for printing or PDF export.
+  - 📊 **Clean JSON Data (`.json`)**: Lightweight structured data without base64 image overhead.
 
 ---
 
@@ -73,7 +76,7 @@ When a user selects coordinates or an agricultural plot on the interactive map, 
 flowchart TD
     subgraph Frontend["Frontend Layer (Next.js 14 App Router)"]
         UI["Interactive Dashboard UI"]
-        Map["Leaflet Map (CartoDB & Esri Satellite)"]
+        Map["Leaflet Map (OpenStreetMap & Esri Satellite)"]
         Presets["1-Click Agricultural Presets"]
         Panel["Analytics Panel: NDVI, Heatmap, Chart"]
     end
@@ -184,64 +187,10 @@ curl -X POST "http://localhost:8000/api/v1/analyze" \
     "description": "Vigorous crop canopy with high leaf area index and intense photosynthetic activity.",
     "recommendation": "Ideal growth conditions. Maintain current irrigation schedule and nutrition plan."
   },
-  "thumbnail_url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA...",
+  "thumbnail_url": "data:image/png;base64,iVBORw0KGgoAAA...",
   "true_color_thumbnail": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/.../thumbnail.jpg",
   "is_simulated": false,
   "processing_time_ms": 7567.87
-}
-```
-
-#### Response Field Descriptions
-| Field | Type | Description |
-|---|---|---|
-| `success` | `boolean` | `true` if processing succeeded. |
-| `scene_id` | `string` | Unique Copernicus Sentinel-2 L2A granule ID. |
-| `platform` | `string` | Satellite instrument identifier (`Sentinel-2A`, `Sentinel-2B`, `Sentinel-2C`). |
-| `acquisition_date` | `string` | Satellite pass timestamp in UTC (ISO 8601). |
-| `cloud_cover_percentage` | `float` | Evaluated cloud contamination across the granule. |
-| `sun_elevation` | `float` | Solar elevation angle at acquisition time. |
-| `coordinates` | `object` | Target center `{ "lat": float, "lon": float }`. |
-| `bbox` | `array` | Bounding box `[min_lon, min_lat, max_lon, max_lat]`. |
-| `resolution_meters` | `float` | Ground sample distance (`10.0` meters for Bands 4 & 8). |
-| `pixels_analyzed` | `integer` | Count of spatial raster cells inside the sampling window. |
-| `ndvi.mean` | `float` | Area-weighted mean NDVI value (`-1.0` to `1.0`). |
-| `ndvi.min` / `max` | `float` | Minimum and maximum pixel values in the plot. |
-| `ndvi.std` | `float` | Standard deviation measuring spatial crop homogeneity. |
-| `ndvi.median` / `p25` / `p75` | `float` | Percentile distribution metrics. |
-| `interpretation.label` | `string` | Agronomic classification label. |
-| `interpretation.recommendation` | `string` | Actionable recommendation for farm management. |
-| `thumbnail_url` | `string` | Base64-encoded PNG data URI containing the colorized colormap heatmap. |
-| `true_color_thumbnail` | `string` | URL to the original Sentinel-2 true-color overview thumbnail. |
-| `is_simulated` | `boolean` | `false` for live S3 streaming; `true` if fallback was engaged. |
-| `processing_time_ms` | `float` | Total execution latency in milliseconds. |
-
----
-
-### Error Responses
-
-#### Cloud Cover Exceeded (`422 Unprocessable Entity`)
-Returned when all candidate scenes exceed `max_cloud_cover`:
-```json
-{
-  "detail": {
-    "error": "CLOUD_COVER_EXCEEDED",
-    "message": "The lowest cloud cover available for recent scenes is 34.2%, which exceeds the configured maximum threshold of 20.0% (Acquired: 2026-08-30T11:25:00Z).",
-    "lowest_cloud_cover": 34.2,
-    "max_threshold": 20.0,
-    "scene_date": "2026-08-30T11:25:00Z",
-    "recommendation": "Increase the cloud cover tolerance threshold or select a wider historical date range."
-  }
-}
-```
-
-#### No Scenes Found (`404 Not Found`)
-```json
-{
-  "detail": {
-    "error": "NO_SCENES_FOUND",
-    "message": "No Sentinel-2 satellite scenes were found for coordinates (0.0000, 0.0000).",
-    "recommendation": "Verify that target coordinates correspond to a land surface covered by Sentinel-2 orbit swaths."
-  }
 }
 ```
 
@@ -249,7 +198,25 @@ Returned when all candidate scenes exceed `max_cloud_cover`:
 
 ## ⚡ Quick Start
 
-### Method 1: Docker Compose (All-in-One)
+### Method 1: Windows 1-Click Launchers (No Docker Required)
+
+If you are on Windows and don't have Docker installed, you can start both the backend and frontend simultaneously with a single click:
+
+- **Option A**: Double-click [`start.bat`](start.bat) in File Explorer.
+- **Option B**: In PowerShell, run:
+  ```powershell
+  .\start.ps1
+  ```
+
+This automatically launches:
+1. **FastAPI Backend** on [http://localhost:8000](http://localhost:8000) (Swagger Docs at `/api/v1/docs`).
+2. **Next.js Frontend** on [http://localhost:3000](http://localhost:3000) and opens your browser.
+
+---
+
+### Method 2: Docker Compose (For environments with Docker installed)
+
+> **Note:** If Docker is installed, modern Docker uses `docker compose` (with a space) rather than legacy `docker-compose`.
 
 ```bash
 # Clone the repository
@@ -257,16 +224,14 @@ git clone https://github.com/Miguel-Galrito/sat-health-api.git
 cd sat-health-api
 
 # Start backend and frontend containers
+docker compose up --build
+# Or with legacy Docker:
 docker-compose up --build
 ```
 
-- **Frontend Application**: [http://localhost:3000](http://localhost:3000)
-- **Interactive Swagger API Docs**: [http://localhost:8000/api/v1/docs](http://localhost:8000/api/v1/docs)
-- **Health Verification**: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
-
 ---
 
-### Method 2: Local Development Setup
+### Method 3: Manual Terminal Setup
 
 #### 1. Backend Setup (FastAPI & Python 3.11+)
 ```bash
