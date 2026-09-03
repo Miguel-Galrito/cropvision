@@ -13,6 +13,8 @@ import { analyzeVegetation, checkHealth, fetchTimeSeries } from '../lib/api';
 import {
   AlertTriangle,
   Crosshair,
+  LocateFixed,
+  MapPin,
   Play,
   RotateCcw,
   Sliders,
@@ -23,6 +25,11 @@ export default function DashboardPage() {
   const [lat, setLat] = useState<number>(38.3842);
   const [lon, setLon] = useState<number>(-7.5519);
   const [zoom, setZoom] = useState<number>(13);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | null>(null);
+
+  // Manual input state
+  const [manualLat, setManualLat] = useState<string>('38.3842');
+  const [manualLon, setManualLon] = useState<string>('-7.5519');
 
   // Settings
   const [maxCloudCover, setMaxCloudCover] = useState<number>(20.0);
@@ -94,10 +101,36 @@ export default function DashboardPage() {
   }, []);
 
   // Map click coordinate selection handler
-  const handleSelectCoordinate = (clickedLat: number, clickedLon: number) => {
-    setLat(clickedLat);
-    setLon(clickedLon);
-    runAnalysis(clickedLat, clickedLon);
+  const handleSelectCoordinate = useCallback(
+    (clickedLat: number, clickedLon: number) => {
+      console.log('[DashboardPage] New target coordinates selected:', clickedLat, clickedLon);
+      setLat(clickedLat);
+      setLon(clickedLon);
+      setManualLat(clickedLat.toFixed(5));
+      setManualLon(clickedLon.toFixed(5));
+      runAnalysis(clickedLat, clickedLon);
+    },
+    [runAnalysis]
+  );
+
+  // Center tracking when map is dragged
+  const handleCenterChange = useCallback(
+    (centerLat: number, centerLon: number) => {
+      setMapCenter({ lat: centerLat, lon: centerLon });
+    },
+    []
+  );
+
+  const isMapPannedAway =
+    mapCenter !== null &&
+    (Math.abs(mapCenter.lat - lat) > 0.005 || Math.abs(mapCenter.lon - lon) > 0.005);
+
+  const handleApplyManualCoordinates = () => {
+    const parsedLat = parseFloat(manualLat);
+    const parsedLon = parseFloat(manualLon);
+    if (!isNaN(parsedLat) && !isNaN(parsedLon) && parsedLat >= -90 && parsedLat <= 90 && parsedLon >= -180 && parsedLon <= 180) {
+      handleSelectCoordinate(parsedLat, parsedLon);
+    }
   };
 
   return (
@@ -113,7 +146,7 @@ export default function DashboardPage() {
           zoom={zoom}
           bbox={analysisData?.bbox}
           onSelectCoordinate={handleSelectCoordinate}
-          disabled={isLoading}
+          onCenterChange={handleCenterChange}
         />
       </main>
 
@@ -140,8 +173,9 @@ export default function DashboardPage() {
           {/* Quick Coordinate Manual Input & Filters */}
           <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-xs">
             <div className="flex items-center space-x-2 text-slate-300">
-              <span className="text-[11px] text-emerald-300 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                Target: {lat.toFixed(5)}°, {lon.toFixed(5)}°
+              <span className="text-[11px] text-emerald-300 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800 flex items-center space-x-1">
+                <MapPin className="w-3 h-3 text-emerald-400" />
+                <span>{lat.toFixed(5)}°, {lon.toFixed(5)}°</span>
               </span>
               <button
                 onClick={() => setShowSettings(!showSettings)}
@@ -152,53 +186,100 @@ export default function DashboardPage() {
                 }`}
               >
                 <Sliders className="w-3 h-3" />
-                <span>Cloud Filter ({maxCloudCover}%)</span>
+                <span>Controls ({maxCloudCover}%)</span>
               </button>
             </div>
 
-            <button
-              onClick={() => runAnalysis(lat, lon)}
-              disabled={isLoading}
-              className="flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md shadow-emerald-600/30 transition-all disabled:opacity-50"
-            >
-              <Play className="w-3 h-3 fill-current" />
-              <span>Re-analyze</span>
-            </button>
+            <div className="flex items-center space-x-1.5">
+              {isMapPannedAway && mapCenter && (
+                <button
+                  onClick={() => handleSelectCoordinate(mapCenter.lat, mapCenter.lon)}
+                  disabled={isLoading}
+                  className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 font-medium text-xs border border-emerald-500/30 transition-all shadow-sm"
+                  title="Place pin and analyze the center of your current view"
+                >
+                  <LocateFixed className="w-3 h-3 text-emerald-400" />
+                  <span>Target Center</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => runAnalysis(lat, lon)}
+                disabled={isLoading}
+                className="flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md shadow-emerald-600/30 transition-all disabled:opacity-50"
+              >
+                <Play className="w-3 h-3 fill-current" />
+                <span>Re-analyze</span>
+              </button>
+            </div>
           </div>
 
           {/* Collapsible Settings Drawer */}
           {showSettings && (
-            <div className="pt-3 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="pt-3 border-t border-slate-800 flex flex-col space-y-3 text-xs">
+              {/* Manual Coordinate Inputs */}
               <div>
-                <label className="flex justify-between text-slate-400 mb-1">
-                  <span>Max Cloud Cover Limit:</span>
-                  <span className="font-semibold text-emerald-400">{maxCloudCover}%</span>
+                <label className="text-slate-400 block mb-1 text-[11px] font-medium">
+                  Direct Coordinate Input (Lat, Lon):
                 </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="80"
-                  step="5"
-                  value={maxCloudCover}
-                  onChange={(e) => setMaxCloudCover(Number(e.target.value))}
-                  className="w-full accent-emerald-500 bg-slate-800 rounded-lg cursor-pointer h-1.5"
-                />
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    step="0.0001"
+                    placeholder="Latitude"
+                    value={manualLat}
+                    onChange={(e) => setManualLat(e.target.value)}
+                    className="w-1/2 px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 font-mono text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                  <input
+                    type="number"
+                    step="0.0001"
+                    placeholder="Longitude"
+                    value={manualLon}
+                    onChange={(e) => setManualLon(e.target.value)}
+                    className="w-1/2 px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 font-mono text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    onClick={handleApplyManualCoordinates}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg transition-colors shrink-0"
+                  >
+                    Go
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <label className="flex justify-between text-slate-400 mb-1">
-                  <span>Sampling Radius (Buffer):</span>
-                  <span className="font-semibold text-emerald-400">{bufferMeters}m</span>
-                </label>
-                <input
-                  type="range"
-                  min="200"
-                  max="2000"
-                  step="100"
-                  value={bufferMeters}
-                  onChange={(e) => setBufferMeters(Number(e.target.value))}
-                  className="w-full accent-emerald-500 bg-slate-800 rounded-lg cursor-pointer h-1.5"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="flex justify-between text-slate-400 mb-1">
+                    <span>Max Cloud Cover Limit:</span>
+                    <span className="font-semibold text-emerald-400">{maxCloudCover}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="80"
+                    step="5"
+                    value={maxCloudCover}
+                    onChange={(e) => setMaxCloudCover(Number(e.target.value))}
+                    className="w-full accent-emerald-500 bg-slate-800 rounded-lg cursor-pointer h-1.5"
+                  />
+                </div>
+
+                <div>
+                  <label className="flex justify-between text-slate-400 mb-1">
+                    <span>Sampling Radius (Buffer):</span>
+                    <span className="font-semibold text-emerald-400">{bufferMeters}m</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="200"
+                    max="2000"
+                    step="100"
+                    value={bufferMeters}
+                    onChange={(e) => setBufferMeters(Number(e.target.value))}
+                    className="w-full accent-emerald-500 bg-slate-800 rounded-lg cursor-pointer h-1.5"
+                  />
+                </div>
               </div>
             </div>
           )}

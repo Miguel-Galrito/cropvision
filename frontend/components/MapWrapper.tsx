@@ -10,6 +10,7 @@ interface MapWrapperProps {
   zoom?: number;
   bbox?: [number, number, number, number] | null;
   onSelectCoordinate: (lat: number, lon: number) => void;
+  onCenterChange?: (centerLat: number, centerLon: number) => void;
   disabled?: boolean;
 }
 

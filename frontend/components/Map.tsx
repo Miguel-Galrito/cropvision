@@ -10,6 +10,7 @@ interface MapProps {
   zoom?: number;
   bbox?: [number, number, number, number] | null;
   onSelectCoordinate: (lat: number, lon: number) => void;
+  onCenterChange?: (centerLat: number, centerLon: number) => void;
   disabled?: boolean;
 }
 
@@ -19,7 +20,7 @@ export const Map: React.FC<MapProps> = ({
   zoom = 13,
   bbox,
   onSelectCoordinate,
-  disabled = false,
+  onCenterChange,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
@@ -30,6 +31,13 @@ export const Map: React.FC<MapProps> = ({
     streets: null,
     satellite: null,
   });
+
+  // Keep references to callback functions to avoid stale closures in Leaflet events
+  const onSelectCoordinateRef = useRef(onSelectCoordinate);
+  onSelectCoordinateRef.current = onSelectCoordinate;
+
+  const onCenterChangeRef = useRef(onCenterChange);
+  onCenterChangeRef.current = onCenterChange;
 
   useEffect(() => {
     // Dynamically import Leaflet only on client
@@ -81,18 +89,35 @@ export const Map: React.FC<MapProps> = ({
         iconAnchor: [12, 12],
       });
 
-      const marker = L.marker([lat, lon], { icon: pulseIcon }).addTo(map);
+      // Marker is non-interactive so it never intercepts map clicks
+      const marker = L.marker([lat, lon], {
+        icon: pulseIcon,
+        interactive: false,
+      }).addTo(map);
       markerRef.current = marker;
 
-      // Click listener on map to select new coordinate anywhere on Earth
+      // Click listener: ALWAYS active, placing marker and notifying parent
       map.on('click', (e) => {
-        if (!disabled) {
-          const clickedLat = Number(e.latlng.lat.toFixed(6));
-          const clickedLon = Number(e.latlng.lng.toFixed(6));
-          if (markerRef.current) {
-            markerRef.current.setLatLng([clickedLat, clickedLon]);
-          }
-          onSelectCoordinate(clickedLat, clickedLon);
+        const clickedLat = Number(e.latlng.lat.toFixed(6));
+        const clickedLon = Number(e.latlng.lng.toFixed(6));
+        console.log('[SatHealth Map] Clicked at:', clickedLat, clickedLon);
+
+        if (markerRef.current) {
+          markerRef.current.setLatLng([clickedLat, clickedLon]);
+        }
+
+        if (onSelectCoordinateRef.current) {
+          onSelectCoordinateRef.current(clickedLat, clickedLon);
+        }
+      });
+
+      // Track center changes when map is panned/dragged
+      map.on('moveend', () => {
+        const center = map.getCenter();
+        const centerLat = Number(center.lat.toFixed(6));
+        const centerLon = Number(center.lng.toFixed(6));
+        if (onCenterChangeRef.current) {
+          onCenterChangeRef.current(centerLat, centerLon);
         }
       });
 
@@ -108,24 +133,32 @@ export const Map: React.FC<MapProps> = ({
     };
   }, []);
 
-  // Update map center & marker when lat/lon changes
+  // Update map marker and center when lat/lon change
   useEffect(() => {
     if (!mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    if (markerRef.current) {
+      markerRef.current.setLatLng([lat, lon]);
+    }
+
+    // Only pan if target is outside current visible bounds
+    try {
+      const bounds = map.getBounds();
+      if (!bounds.contains([lat, lon])) {
+        map.panTo([lat, lon], { animate: true, duration: 0.8 });
+      }
+    } catch {
+      map.panTo([lat, lon]);
+    }
+  }, [lat, lon]);
+
+  // Update Bounding Box Rectangle separately without moving map camera
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
 
     import('leaflet').then((L) => {
-      const map = mapInstanceRef.current;
-      if (!map) return;
-
-      const currentZoom = map.getZoom();
-      map.flyTo([lat, lon], currentZoom || zoom, {
-        duration: 0.8,
-      });
-
-      if (markerRef.current) {
-        markerRef.current.setLatLng([lat, lon]);
-      }
-
-      // Update Bounding Box Rectangle if available
       if (bboxRectRef.current) {
         map.removeLayer(bboxRectRef.current);
         bboxRectRef.current = null;
@@ -143,12 +176,13 @@ export const Map: React.FC<MapProps> = ({
           fillColor: '#10b981',
           fillOpacity: 0.18,
           dashArray: '4, 4',
+          interactive: false, // Never block map clicks!
         }).addTo(map);
 
         bboxRectRef.current = rect;
       }
     });
-  }, [lat, lon, zoom, bbox]);
+  }, [bbox]);
 
   // Toggle Basemap (Streets vs Satellite)
   const toggleBasemap = () => {
