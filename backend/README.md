@@ -1,39 +1,60 @@
 # SatHealth Backend (FastAPI + GDAL/Rasterio)
 
-Serviço de alta performance para consulta de dados de satélite Copernicus Sentinel-2 L2A via catálogo STAC aberto e cálculo matricial de NDVI (Normalized Difference Vegetation Index).
+High-performance asynchronous backend service for querying open **Copernicus Sentinel-2 L2A** satellite catalogs and computing matrix **NDVI (Normalized Difference Vegetation Index)** via Cloud Optimized GeoTIFF (COG) HTTP Range Requests.
 
-## 🚀 Tecnologias
+---
 
-- **FastAPI**: Framework web assíncrono e tipado.
-- **Pydantic v2 & Pydantic Settings**: Validação rigorosa de payloads e configuração.
-- **pystac-client**: Descoberta de coleções e itens geoespaciais em catálogos STAC abertos da AWS / Copernicus.
-- **Rasterio & GDAL**: Leitura eficiente de Cloud Optimized GeoTIFFs (COGs) via HTTP Range Requests (Bandas 4 e 8).
-- **NumPy**: Processamento de matrizes de refletância e estatísticas zonais.
-- **Matplotlib & Pillow**: Renderização de mapa de calor NDVI (RdYlGn) em base64 PNG.
+## 🚀 Technology Stack
 
-## 📡 Endpoints Principais
+- **FastAPI**: Modern, asynchronous, typed Python web framework.
+- **Pydantic v2 & Pydantic Settings**: Strict runtime data validation and environment variable parsing.
+- **pystac-client**: Open STAC discovery client querying AWS Element84 Sentinel-2 L2A catalogs.
+- **Rasterio & GDAL**: Spatial window extraction using HTTP Range Requests on remote COG assets (Bands 4 and 8) without multi-hundred megabyte file downloads.
+- **NumPy**: Fast vectorized matrix math for NDVI calculation and zonal statistics.
+- **Matplotlib & Pillow**: Server-side colormap generation rendering Base64 PNG heatmaps (`RdYlGn`).
+- **Pytest & HTTPX**: Automated integration and unit test suite.
 
-| Método | Endpoint | Descrição |
+---
+
+## 📡 Core API Endpoints
+
+| Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/v1/health` | Verificação de integridade e conectividade com o catálogo STAC |
-| `POST` | `/api/v1/analyze` | Análise de NDVI para coordenadas (`lat`, `lon`, `max_cloud_cover`) |
-| `POST` | `/api/v1/timeseries` | Histórico de capturas e evolução temporal de vegetação |
-| `GET` | `/api/v1/docs` | Documentação interativa Swagger / OpenAPI |
+| `GET` | `/api/v1/health` | Service health status and live STAC catalog probe |
+| `POST` | `/api/v1/analyze` | Sentinel-2 NDVI calculation for given coordinates (`lat`, `lon`, `max_cloud_cover`) |
+| `POST` | `/api/v1/timeseries` | Historical multi-temporal NDVI trend over recent orbits |
+| `GET` | `/api/v1/docs` | Interactive Swagger UI / OpenAPI documentation |
 
-## 🛠️ Execução Local
+---
+
+## 🛠️ Local Development
 
 ```bash
-# 1. Ativar ambiente virtual
-source .venv/bin/activate  # ou .venv\Scripts\activate no Windows
+# 1. Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# 2. Instalar dependências
+# 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Executar o servidor
+# 3. Run FastAPI application
 uvicorn app.main:app --reload --port 8000
 ```
 
-## 🐳 Execução com Docker
+Access Swagger UI documentation at: `http://localhost:8000/api/v1/docs`
+
+---
+
+## 🧪 Running Automated Tests
+
+```bash
+# Set PYTHONPATH and execute pytest
+pytest tests/ -v
+```
+
+---
+
+## 🐳 Docker Deployment
 
 ```bash
 docker build -t sathealth-backend .

@@ -1,6 +1,6 @@
 """
 SatHealth API - Earth Observation Micro-SaaS.
-FastAPI main application entrypoint with strict CORS, OpenAPI docs, and error handlers.
+FastAPI main application entrypoint with strict CORS, OpenAPI docs, and global error handlers.
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
@@ -49,7 +49,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "error": "INTERNAL_SERVER_ERROR",
-            "message": "Ocorreu um erro interno inesperado ao processar o pedido geoespacial.",
+            "message": "An unexpected internal server error occurred while processing geospatial satellite data.",
             "detail": str(exc) if settings.DEBUG else None,
         },
     )
@@ -60,7 +60,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/", tags=["Root"])
 async def root():
-    """Root landing endpoint with navigation shortcuts."""
+    """Root landing endpoint with API navigation links."""
     return {
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,

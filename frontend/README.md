@@ -1,32 +1,46 @@
 # SatHealth Frontend (Next.js 14 + Tailwind CSS + Leaflet)
 
-Interface web moderna e responsiva do micro-SaaS SatHealth para exploração e monitorização do vigor vegetativo agrícola através de satélites Copernicus Sentinel-2.
+Modern, responsive web dashboard for the **SatHealth** Earth Observation Micro-SaaS, enabling interactive vegetation vigor and crop health exploration via Copernicus Sentinel-2 satellites.
 
-## ✨ Funcionalidades
+---
 
-- **Mapa Interativo (Leaflet & OpenStreetMap)**: Suporte a camadas vetoriais e de satélite em alta resolução, seleção de coordenadas por clique direto no globo e marcador pulsante animado.
-- **Áreas Agrícolas de Demonstração (1-Clique)**: Herdade do Esporão (Alentejo), Fazenda Sorriso (Mato Grosso), Central Valley (Califórnia), Quinta do Vallado (Douro) e Albufeira de Alqueva.
-- **Score NDVI & Barra Espectral**: Indicador com gradiente agronómico (Solo Seco -> Vegetação Esparsa -> Vegetação Moderada -> Vigor Intenso).
-- **Visualização de Satélite**: Miniatura em cor verdadeira do sensor Sentinel-2 e mapa de calor (colormap RdYlGn) gerado pelo backend.
-- **Estatísticas Zonais**: Mínimo, mediana, máximo e desvio padrão para avaliação da homogeneidade da parcela.
-- **Série Temporal (Time-Series)**: Gráfico interativo com a evolução do índice nas últimas passagens orbitais.
-- **Exportação**: Download de relatório analítico completo em formato JSON.
+## ✨ Features
 
-## 🚀 Como Executar
+- **Interactive Geospatial Map (Leaflet)**:
+  - SSR-safe integration supporting high-resolution Esri World Imagery (satellite) and CartoDB Voyager (street map).
+  - Target crosshair with radar pulse animation and dynamic bounding box rectangle illustrating the sampled spatial window.
+  - Direct coordinate selection on map click.
+- **1-Click Agricultural Demo Presets**:
+  - *Esporão Estate* (Alentejo, Portugal) - Vineyards & Olive Groves.
+  - *Cerrado Farm* (Sorriso, Mato Grosso, Brazil) - Large-Scale Soybean & Corn.
+  - *Central Valley* (Fresno, California, USA) - Drip-Irrigated Almond & Citrus Orchards.
+  - *Quinta do Vallado* (Douro Valley, Portugal) - Terraced Hillside Vineyards.
+  - *Alqueva Reservoir* (Portugal) - Open Water Calibrator.
+- **NDVI Score Gauge & Spectral Color Bar**: Visual gradient indicator (Bare Soil $\rightarrow$ Moisture Stress $\rightarrow$ Moderate $\rightarrow$ Vigorous Canopy).
+- **Dual Satellite Views**: Side-by-side comparison between **True Color (RGB)** and server-rendered **NDVI Spectral Heatmap**.
+- **Zonal Statistics**: Minimum, median, maximum, and standard deviation (spatial canopy homogeneity).
+- **Historical Time-Series Trend**: Interactive SVG trend chart tracking vegetation index across recent orbital passes.
+- **Report Export**: Instant JSON analysis report download.
+
+---
+
+## 🚀 Getting Started
 
 ```bash
-# 1. Instalar dependências
+# 1. Install dependencies
 npm install
 
-# 2. Iniciar servidor de desenvolvimento
+# 2. Start development server
 npm run dev
 
-# Abrir http://localhost:3000
+# Open http://localhost:3000
 ```
 
-## 🌐 Variáveis de Ambiente
+---
 
-Configure no ficheiro `.env.local`:
+## 🌐 Environment Variables
+
+Configure in `.env.local`:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ```

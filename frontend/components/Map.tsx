@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import type { Map as LeafletMap, Marker, Rectangle, TileLayer } from 'leaflet';
-import { Layers, Locate, ZoomIn, ZoomOut } from 'lucide-react';
+import { Layers, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface MapProps {
   lat: number;
@@ -182,11 +182,11 @@ export const Map: React.FC<MapProps> = ({
         <button
           onClick={toggleBasemap}
           className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-950/80 backdrop-blur-md border border-slate-800 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-900 shadow-xl transition-all"
-          title="Alternar entre mapa vetorial e satélite de alta resolução"
+          title="Toggle vector map and high-resolution satellite layer"
         >
           <Layers className="w-4 h-4 text-emerald-400" />
           <span className="capitalize hidden sm:inline">
-            {activeLayer === 'carto' ? 'Ver Satélite' : 'Ver Mapa'}
+            {activeLayer === 'carto' ? 'Satellite View' : 'Street Map'}
           </span>
         </button>
 
@@ -195,14 +195,14 @@ export const Map: React.FC<MapProps> = ({
           <button
             onClick={handleZoomIn}
             className="p-2 text-slate-300 hover:text-white hover:bg-slate-900 transition-colors border-b border-slate-800"
-            title="Aproximar Zoom"
+            title="Zoom In"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={handleZoomOut}
             className="p-2 text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
-            title="Afastar Zoom"
+            title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
@@ -212,7 +212,7 @@ export const Map: React.FC<MapProps> = ({
       {/* Crosshair target helper */}
       <div className="absolute bottom-6 left-6 z-20 pointer-events-none hidden md:block">
         <div className="px-3 py-1.5 rounded-lg bg-slate-950/80 backdrop-blur-md border border-slate-800 text-[11px] text-slate-400">
-          Clique em qualquer ponto do mapa para analisar o índice NDVI com Sentinel-2
+          Click anywhere on the map to analyze NDVI using Copernicus Sentinel-2
         </div>
       </div>
     </div>

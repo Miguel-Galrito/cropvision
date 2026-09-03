@@ -29,11 +29,11 @@ router = APIRouter()
     "/analyze",
     response_model=AnalyzeResponse,
     status_code=status.HTTP_200_OK,
-    summary="Análise de NDVI via Sentinel-2",
+    summary="Sentinel-2 NDVI Vegetation Analysis",
     description=(
-        "Recebe coordenadas geográficas (lat, lon), pesquisa o catálogo STAC do Sentinel-2 L2A, "
-        "descarrega as Bandas 4 (Red) e 8 (NIR) através de HTTP Range Requests com rasterio, "
-        "calcula a matriz NDVI com NumPy e devolve estatísticas, interpretação agronómica e mapa de calor."
+        "Receives geographic coordinates (lat, lon), queries the Copernicus Sentinel-2 L2A STAC catalog, "
+        "streams Band 4 (Red) and Band 8 (NIR) via HTTP Range Requests using rasterio, "
+        "computes matrix NDVI with NumPy, and returns statistical metrics, agronomic interpretation, and a colorized heatmap."
     ),
 )
 async def analyze_vegetation(payload: AnalyzeRequest) -> AnalyzeResponse:
@@ -42,7 +42,7 @@ async def analyze_vegetation(payload: AnalyzeRequest) -> AnalyzeResponse:
         f"Processing NDVI analysis for ({payload.lat}, {payload.lon}), max_cloud={payload.max_cloud_cover}%"
     )
 
-    # 1. Search for best STAC scene in thread pool to prevent blocking event loop
+    # 1. Search for best STAC scene in thread pool to prevent blocking the async event loop
     try:
         item, band_urls = await asyncio.to_thread(
             stac_service.search_best_scene,
@@ -63,7 +63,7 @@ async def analyze_vegetation(payload: AnalyzeRequest) -> AnalyzeResponse:
                 "lowest_cloud_cover": exc.lowest_cloud_cover,
                 "max_threshold": exc.max_threshold,
                 "scene_date": exc.scene_date,
-                "recommendation": "Tente aumentar o limite de cobertura de nuvens ou selecionar um intervalo de datas diferente.",
+                "recommendation": "Increase the cloud cover tolerance threshold or select a wider historical date range.",
             },
         )
     except NoScenesFoundException as exc:
@@ -73,7 +73,7 @@ async def analyze_vegetation(payload: AnalyzeRequest) -> AnalyzeResponse:
             detail={
                 "error": "NO_SCENES_FOUND",
                 "message": str(exc),
-                "recommendation": "Verifique se as coordenadas correspondem a uma área de terra firme coberta pela órbita Sentinel-2.",
+                "recommendation": "Verify that target coordinates correspond to a land surface covered by Sentinel-2 orbit swaths.",
             },
         )
     except STACException as exc:
@@ -82,7 +82,7 @@ async def analyze_vegetation(payload: AnalyzeRequest) -> AnalyzeResponse:
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail={
                 "error": "STAC_CATALOG_UNAVAILABLE",
-                "message": f"Falha na comunicação com o catálogo público Copernicus/STAC: {str(exc)}",
+                "message": f"Failed communicating with open Copernicus STAC catalog: {str(exc)}",
             },
         )
 
@@ -100,7 +100,7 @@ async def analyze_vegetation(payload: AnalyzeRequest) -> AnalyzeResponse:
     
     true_color_thumb = band_urls.get("thumbnail") or band_urls.get("visual")
 
-    # 3. Read COG Bands via HTTP Range Requests and compute NDVI
+    # 3. Stream COG Bands via HTTP Range Requests and compute NDVI
     is_simulated = False
     try:
         red_arr, nir_arr = await asyncio.to_thread(
@@ -162,8 +162,8 @@ async def analyze_vegetation(payload: AnalyzeRequest) -> AnalyzeResponse:
     "/timeseries",
     response_model=TimeSeriesResponse,
     status_code=status.HTTP_200_OK,
-    summary="Evolução temporal do NDVI histórico",
-    description="Pesquisa capturas recentes do Sentinel-2 sobre a área e gera a curva de evolução temporal do NDVI.",
+    summary="Historical NDVI Time-Series Trend",
+    description="Queries recent orbital Sentinel-2 passes over the coordinates and computes historical vegetation trend line.",
 )
 async def get_ndvi_timeseries(payload: TimeSeriesRequest) -> TimeSeriesResponse:
     items = await asyncio.to_thread(
@@ -187,7 +187,7 @@ async def get_ndvi_timeseries(payload: TimeSeriesRequest) -> TimeSeriesResponse:
         for idx, item in enumerate(sorted_items):
             dt = item.properties.get("datetime", "")[:10]
             cloud = round(float(item.properties.get("eo:cloud_cover", 0.0)), 1)
-            # Calibrate NDVI variation realistically over time (seasonal cycle)
+            # Calibrate realistic seasonal variation
             variation = 0.08 * (idx - len(sorted_items) / 2.0) / (len(sorted_items) + 1e-3)
             val = round(max(0.1, min(0.85, base_ndvi + variation)), 3)
             

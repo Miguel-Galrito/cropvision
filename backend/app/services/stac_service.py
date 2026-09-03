@@ -1,7 +1,7 @@
 """
 STAC (SpatioTemporal Asset Catalog) Service.
 Queries open STAC catalogs (AWS Element84 / Copernicus Sentinel-2 L2A) using pystac-client.
-Includes handling for cloud cover thresholds and server failures.
+Includes robust handling for cloud cover thresholds and server connectivity errors.
 """
 import math
 from datetime import datetime, timedelta, timezone
@@ -20,29 +20,29 @@ class STACException(Exception):
 
 
 class CloudCoverExceededException(STACException):
-    """Raised when available scenes exceed the maximum cloud cover threshold."""
+    """Raised when available scenes exceed the maximum allowable cloud cover threshold."""
     def __init__(self, lowest_cloud_cover: float, max_threshold: float, scene_date: str):
         self.lowest_cloud_cover = lowest_cloud_cover
         self.max_threshold = max_threshold
         self.scene_date = scene_date
         super().__init__(
-            f"A cobertura de nuvens mais recente disponível é {lowest_cloud_cover:.1f}%, "
-            f"o que excede o limite máximo configurado de {max_threshold:.1f}% (Data: {scene_date})."
+            f"The lowest cloud cover available for recent scenes is {lowest_cloud_cover:.1f}%, "
+            f"which exceeds the configured maximum threshold of {max_threshold:.1f}% (Acquired: {scene_date})."
         )
 
 
 class NoScenesFoundException(STACException):
-    """Raised when no scenes are found for the coordinates."""
+    """Raised when no scenes are found for the target coordinates."""
     def __init__(self, lat: float, lon: float):
         self.lat = lat
         self.lon = lon
         super().__init__(
-            f"Não foram encontradas cenas de satélite Sentinel-2 para as coordenadas ({lat:.4f}, {lon:.4f})."
+            f"No Sentinel-2 satellite scenes were found for coordinates ({lat:.4f}, {lon:.4f})."
         )
 
 
 class STACService:
-    """Service to interact with Sentinel-2 STAC catalogs."""
+    """Service to discover and query Sentinel-2 STAC catalogs."""
 
     def __init__(self, catalog_url: Optional[str] = None, collection: Optional[str] = None):
         self.catalog_url = catalog_url or settings.STAC_API_URL
@@ -77,7 +77,7 @@ class STACService:
             )
         except Exception as exc:
             logger.error(f"Failed to connect to STAC Catalog at {self.catalog_url}: {exc}")
-            raise STACException(f"Não foi possível conectar ao catálogo STAC: {str(exc)}") from exc
+            raise STACException(f"Failed to connect to STAC catalog: {str(exc)}") from exc
 
     def search_best_scene(
         self,
@@ -90,7 +90,7 @@ class STACService:
     ) -> Tuple[Item, Dict[str, str]]:
         """
         Searches for the most recent Sentinel-2 L2A scene satisfying cloud cover constraints.
-        Returns the STAC Item and a dictionary containing URLs for B04 (Red) and B08 (NIR).
+        Returns the STAC Item and a dictionary containing direct access URLs for B04 (Red) and B08 (NIR).
         """
         bbox = self.get_bbox_from_point(lat, lon, buffer_meters)
         client = self._get_client()
@@ -122,11 +122,11 @@ class STACService:
             items = list(search.items())
         except Exception as exc:
             logger.error(f"STAC search query execution failed: {exc}")
-            raise STACException(f"Erro ao consultar catálogo STAC: {str(exc)}") from exc
+            raise STACException(f"Error executing STAC catalog search: {str(exc)}") from exc
 
         if not items:
             # 2. Check if scenes exist but were excluded due to cloud cover
-            logger.info("No scenes with cloud cover <= %s%%. Checking scenes regardless of cloud cover...", max_cloud_cover)
+            logger.info("No scenes with cloud cover <= %s%%. Checking available scenes regardless of clouds...", max_cloud_cover)
             fallback_search = client.search(
                 collections=[self.collection],
                 bbox=bbox,
@@ -228,7 +228,7 @@ class STACService:
 
         if not red_url or not nir_url:
             raise STACException(
-                f"A cena {item.id} não possui as bandas necessárias (Red/NIR) disponíveis."
+                f"Scene {item.id} does not contain required bands (Red/NIR) in open asset catalog."
             )
 
         return {

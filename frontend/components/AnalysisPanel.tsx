@@ -6,17 +6,7 @@ import {
   TimeSeriesPoint,
 } from '../lib/types';
 import {
-  Activity,
-  Calendar,
-  Cloud,
   Download,
-  Eye,
-  Info,
-  Layers,
-  MapPin,
-  Maximize2,
-  ShieldCheck,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { TimeSeriesChart } from './TimeSeriesChart';
@@ -74,7 +64,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   // Export JSON analysis report
   const handleExportJson = () => {
     const report = {
-      title: 'SatHealth - Relatório de Análise de Vegetação (Sentinel-2)',
+      title: 'SatHealth - Satellite Vegetation Analysis Report (Sentinel-2)',
       exported_at: new Date().toISOString(),
       analysis: data,
       timeseries: timeseries,
@@ -103,12 +93,12 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </span>
             {data.is_simulated && (
               <span className="text-[10px] bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 px-2 py-0.5 rounded-full">
-                Modo Offline Calibrado
+                Calibrated Offline Mode
               </span>
             )}
           </div>
           <h2 className="text-base font-bold text-white mt-1.5 flex items-center">
-            Diagnóstico de Vigor Vegetal
+            Crop Vigor Diagnosis
           </h2>
         </div>
         {onClose && (
@@ -124,7 +114,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       {/* Main Score Gauge */}
       <div className="my-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800">
         <div className="flex items-baseline justify-between mb-2">
-          <span className="text-xs text-slate-400 font-medium">NDVI Médio Zonal</span>
+          <span className="text-xs text-slate-400 font-medium">Zonal Mean NDVI</span>
           <div className="flex items-baseline space-x-1">
             <span className="text-3xl font-extrabold text-white tracking-tight">
               {ndviScore.toFixed(3)}
@@ -147,9 +137,9 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
         {/* Spectrum Scale Labels */}
         <div className="flex justify-between items-center text-[10px] text-slate-500 mt-1 font-mono">
-          <span>0.0 (Solo)</span>
+          <span>0.0 (Soil)</span>
           <span>0.3 (Stress)</span>
-          <span>0.6 (Bom)</span>
+          <span>0.6 (Good)</span>
           <span>0.9+ (Lush)</span>
         </div>
 
@@ -158,7 +148,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           {data.interpretation.description}
         </p>
         <div className="mt-2.5 p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-800/40 text-[11px] text-emerald-300 leading-snug">
-          <span className="font-semibold text-emerald-200">Recomendação Agronómica: </span>
+          <span className="font-semibold text-emerald-200">Agronomic Recommendation: </span>
           {data.interpretation.recommendation}
         </div>
       </div>
@@ -166,7 +156,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       {/* Satellite Imagery Tabs */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-slate-300">Visualização de Satélite</span>
+          <span className="text-xs font-semibold text-slate-300">Satellite Imagery</span>
           <div className="flex items-center space-x-1 p-0.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px]">
             <button
               onClick={() => setActiveTab('ndvi')}
@@ -176,7 +166,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Heatmap NDVI
+              NDVI Heatmap
             </button>
             {data.true_color_thumbnail && (
               <button
@@ -187,7 +177,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Cor Verdadeira
+                True Color (RGB)
               </button>
             )}
           </div>
@@ -198,30 +188,30 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           {activeTab === 'ndvi' ? (
             <img
               src={data.thumbnail_url}
-              alt="Mapa de calor NDVI gerado via rasterio/numpy"
+              alt="NDVI spectral heatmap rendered via rasterio/numpy"
               className="w-full h-full object-cover"
             />
           ) : data.true_color_thumbnail ? (
             <img
               src={data.true_color_thumbnail}
-              alt="Imagem de satélite Sentinel-2 em cor verdadeira"
+              alt="Sentinel-2 true color satellite preview"
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="text-xs text-slate-500">Miniatura indisponível</div>
+            <div className="text-xs text-slate-500">Thumbnail unavailable</div>
           )}
 
           {/* Colormap Legend Overlay */}
           {activeTab === 'ndvi' && (
             <div className="absolute bottom-2 left-2 right-2 px-2.5 py-1.5 rounded-lg bg-slate-950/80 backdrop-blur-md border border-slate-800 text-[10px] flex items-center justify-between text-slate-300">
               <span className="flex items-center">
-                <span className="w-2 h-2 rounded-full bg-red-600 mr-1" /> Solo / Seco
+                <span className="w-2 h-2 rounded-full bg-red-600 mr-1" /> Soil / Dry
               </span>
               <span className="flex items-center">
-                <span className="w-2 h-2 rounded-full bg-yellow-400 mr-1" /> Médio
+                <span className="w-2 h-2 rounded-full bg-yellow-400 mr-1" /> Moderate
               </span>
               <span className="flex items-center">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1" /> Vigoroso
+                <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1" /> Healthy Vigor
               </span>
             </div>
           )}
@@ -230,55 +220,55 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
       {/* Zonal Statistics Breakdown */}
       <div className="mb-4">
-        <h4 className="text-xs font-semibold text-slate-300 mb-2">Estatísticas Zonais da Parcela</h4>
+        <h4 className="text-xs font-semibold text-slate-300 mb-2">Zonal Parcel Statistics</h4>
         <div className="grid grid-cols-3 gap-2">
           <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-center">
-            <span className="text-[10px] text-slate-400 block">Mínimo</span>
+            <span className="text-[10px] text-slate-400 block">Minimum</span>
             <span className="text-xs font-bold font-mono text-slate-200">
               {data.ndvi.min.toFixed(3)}
             </span>
           </div>
           <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-center">
-            <span className="text-[10px] text-slate-400 block">Mediana</span>
+            <span className="text-[10px] text-slate-400 block">Median</span>
             <span className="text-xs font-bold font-mono text-emerald-400">
               {data.ndvi.median.toFixed(3)}
             </span>
           </div>
           <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-center">
-            <span className="text-[10px] text-slate-400 block">Máximo</span>
+            <span className="text-[10px] text-slate-400 block">Maximum</span>
             <span className="text-xs font-bold font-mono text-slate-200">
               {data.ndvi.max.toFixed(3)}
             </span>
           </div>
         </div>
         <div className="flex justify-between items-center mt-2 px-1 text-[11px] text-slate-400">
-          <span>Homogeneidade (Desvio Padrão):</span>
+          <span>Canopy Homogeneity (Std Dev):</span>
           <span className="font-mono font-semibold text-slate-300">±{data.ndvi.std.toFixed(3)}</span>
         </div>
       </div>
 
-      {/* Metadata Accordion */}
+      {/* Metadata Section */}
       <div className="mb-4 p-3 rounded-xl bg-slate-900/40 border border-slate-800/80 space-y-2 text-xs">
         <div className="flex justify-between text-slate-400">
-          <span>Satélite & Sensor:</span>
+          <span>Satellite & Sensor:</span>
           <span className="text-slate-200 font-medium">{data.platform} (L2A BOA)</span>
         </div>
         <div className="flex justify-between text-slate-400">
-          <span>Data de Aquisição:</span>
+          <span>Acquisition Date:</span>
           <span className="text-slate-200 font-mono">
             {data.acquisition_date.replace('T', ' ').slice(0, 19)} UTC
           </span>
         </div>
         <div className="flex justify-between text-slate-400">
-          <span>Cobertura de Nuvens:</span>
+          <span>Cloud Cover:</span>
           <span className="text-emerald-400 font-semibold">{data.cloud_cover_percentage}%</span>
         </div>
         <div className="flex justify-between text-slate-400">
-          <span>Resolução Espacial:</span>
+          <span>Spatial Resolution:</span>
           <span className="text-slate-200">{data.resolution_meters}m / pixel</span>
         </div>
         <div className="flex justify-between text-slate-400">
-          <span>Tempo de Processamento:</span>
+          <span>Processing Latency:</span>
           <span className="text-slate-200 font-mono">{data.processing_time_ms} ms</span>
         </div>
         <div className="flex justify-between text-slate-400 pt-1 border-t border-slate-800 text-[10px]">
@@ -303,7 +293,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-colors"
         >
           <Download className="w-3.5 h-3.5 text-slate-400" />
-          <span>Exportar Relatório</span>
+          <span>Export Report</span>
         </button>
 
         <span className="text-[10px] text-slate-500 font-mono">

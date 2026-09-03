@@ -35,7 +35,7 @@ def test_root_endpoint():
 
 
 def test_ndvi_matrix_calculation_dense_vegetation():
-    """Verify NDVI formula: (NIR - RED) / (NIR + RED) for healthy crop."""
+    """Verify NDVI formula: (NIR - RED) / (NIR + RED) for healthy crop canopy."""
     # Synthetic 10x10 raster: low Red (chlorophyll absorption) and high NIR (leaf scattering)
     red = np.full((10, 10), 0.10, dtype=np.float32)
     nir = np.full((10, 10), 0.60, dtype=np.float32)
@@ -49,7 +49,7 @@ def test_ndvi_matrix_calculation_dense_vegetation():
     
     interpretation = ndvi_service.get_interpretation(stats.mean)
     assert interpretation.category == VegetationCategory.DENSE_VEGETATION
-    assert "Densa e Saudável" in interpretation.label
+    assert "Dense" in interpretation.label
 
 
 def test_ndvi_matrix_calculation_bare_soil():

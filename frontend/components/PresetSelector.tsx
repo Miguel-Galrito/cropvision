@@ -20,7 +20,7 @@ export const PresetSelector: React.FC<PresetSelectorProps> = ({
     <div className="flex items-center space-x-2 overflow-x-auto pb-1 max-w-full scrollbar-none">
       <div className="flex items-center text-xs font-semibold text-slate-400 uppercase tracking-wider pl-1 pr-2 shrink-0">
         <Navigation className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
-        <span>Áreas Demo:</span>
+        <span>Demo Plots:</span>
       </div>
       {PRESET_LOCATIONS.map((preset) => {
         const isSelected = selectedPresetId === preset.id;

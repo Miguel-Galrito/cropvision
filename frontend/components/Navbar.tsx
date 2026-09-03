@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Satellite, Activity, ExternalLink, ShieldCheck, Sparkles } from 'lucide-react';
+import { Satellite, ExternalLink } from 'lucide-react';
 
 interface NavbarProps {
   apiHealthy: boolean | null;
@@ -36,7 +36,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-400 hidden sm:block">
-            Micro-SaaS de Monitorização Vegetativa e Vigor Agrícola
+            Earth Observation & Crop Vigor Monitoring Micro-SaaS
           </p>
         </div>
       </div>
@@ -54,35 +54,35 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Right Controls & Status */}
       <div className="flex items-center space-x-3">
-        {/* Backend Connectivity Status */}
+        {/* Backend Status Indicator */}
         <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900/80 border border-slate-800 text-xs">
           <span
             className={`w-2 h-2 rounded-full ${
               apiHealthy === true
                 ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]'
                 : apiHealthy === false
-                ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]'
-                : 'bg-amber-400 animate-pulse'
+                ? 'bg-amber-400 shadow-[0_0_8px_#fbbf24]'
+                : 'bg-emerald-400 shadow-[0_0_8px_#34d399]'
             }`}
           />
           <span className="text-slate-300 font-medium hidden sm:inline">
             {apiHealthy === true
               ? 'API Online'
               : apiHealthy === false
-              ? 'API Offline'
-              : 'Verificando...'}
+              ? 'Demo Cloud Mode'
+              : 'Checking...'}
           </span>
         </div>
 
-        {/* OpenAPI Link */}
+        {/* GitHub Repo Link */}
         <a
-          href="http://localhost:8000/api/v1/docs"
+          href="https://github.com/Miguel-Galrito/sat-health-api"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center space-x-1 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-colors"
-          title="Abrir documentação da API FastAPI"
+          title="Open GitHub Repository"
         >
-          <span>Swagger API</span>
+          <span>GitHub</span>
           <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
         </a>
       </div>

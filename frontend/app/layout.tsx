@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SatHealth - Monitorização de Vegetação por Satélite (Sentinel-2)',
+  title: 'SatHealth - Earth Observation & Vegetation Health Monitoring (Sentinel-2)',
   description:
-    'Micro-SaaS B2B para análise automatizada de NDVI, vigor vegetal e saúde de parcelas agrícolas com dados abertos Copernicus Sentinel-2.',
+    'B2B Micro-SaaS for automated NDVI calculation, crop canopy vigor, and precision agriculture monitoring via Copernicus Sentinel-2 open STAC.',
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt" className="dark">
+    <html lang="en" className="dark">
       <head>
         <link
           rel="stylesheet"

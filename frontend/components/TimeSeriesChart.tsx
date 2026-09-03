@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { TimeSeriesPoint } from '../lib/types';
-import { TrendingUp, Calendar, Cloud } from 'lucide-react';
+import { TrendingUp, Calendar } from 'lucide-react';
 
 interface TimeSeriesChartProps {
   series: TimeSeriesPoint[];
@@ -55,11 +55,11 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ series }) => {
         <div className="flex items-center space-x-2">
           <TrendingUp className="w-4 h-4 text-emerald-400" />
           <span className="text-xs font-semibold text-slate-200">
-            Evolução Histórica do NDVI
+            Historical NDVI Trend
           </span>
         </div>
         <span className="text-[10px] text-slate-400">
-          Últimas {series.length} passagens
+          Last {series.length} passes
         </span>
       </div>
 

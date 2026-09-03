@@ -15,17 +15,13 @@ import {
 import { analyzeVegetation, checkHealth, fetchTimeSeries } from '../lib/api';
 import {
   AlertTriangle,
-  Cloud,
-  Layers,
-  MapPin,
   Play,
   RotateCcw,
   Sliders,
-  Sparkles,
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  // Default to Herdade do Esporão (Alentejo, Portugal)
+  // Default to Esporão Estate (Alentejo, Portugal)
   const defaultPreset = PRESET_LOCATIONS[0];
   const [lat, setLat] = useState<number>(defaultPreset.lat);
   const [lon, setLon] = useState<number>(defaultPreset.lon);
@@ -88,7 +84,7 @@ export default function DashboardPage() {
       } catch (err: any) {
         console.error('Analysis error:', err);
         setError({
-          message: err.message || 'Erro ao processar dados de satélite.',
+          message: err.message || 'Error processing satellite data.',
           detail: err.data,
         });
       } finally {
@@ -151,7 +147,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-xs">
             <div className="flex items-center space-x-2 text-slate-300">
               <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
-                Coordenadas: {lat.toFixed(4)}°, {lon.toFixed(4)}°
+                Coordinates: {lat.toFixed(4)}°, {lon.toFixed(4)}°
               </span>
               <button
                 onClick={() => setShowSettings(!showSettings)}
@@ -162,7 +158,7 @@ export default function DashboardPage() {
                 }`}
               >
                 <Sliders className="w-3 h-3" />
-                <span>Filtro de Nuvens ({maxCloudCover}%)</span>
+                <span>Cloud Filter ({maxCloudCover}%)</span>
               </button>
             </div>
 
@@ -172,7 +168,7 @@ export default function DashboardPage() {
               className="flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md shadow-emerald-600/30 transition-all disabled:opacity-50"
             >
               <Play className="w-3 h-3 fill-current" />
-              <span>Reanalisar</span>
+              <span>Re-analyze</span>
             </button>
           </div>
 
@@ -181,7 +177,7 @@ export default function DashboardPage() {
             <div className="pt-3 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
                 <label className="flex justify-between text-slate-400 mb-1">
-                  <span>Limite Máximo de Nuvens:</span>
+                  <span>Max Cloud Cover Limit:</span>
                   <span className="font-semibold text-emerald-400">{maxCloudCover}%</span>
                 </label>
                 <input
@@ -197,7 +193,7 @@ export default function DashboardPage() {
 
               <div>
                 <label className="flex justify-between text-slate-400 mb-1">
-                  <span>Raio de Amostragem (Buffer):</span>
+                  <span>Sampling Radius (Buffer):</span>
                   <span className="font-semibold text-emerald-400">{bufferMeters}m</span>
                 </label>
                 <input
@@ -227,7 +223,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-rose-200">
-                  Aviso de Cobertura / Satélite
+                  Cloud Cover / Satellite Notice
                 </h3>
                 <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
                   {error.message}
@@ -236,13 +232,13 @@ export default function DashboardPage() {
                 {error.detail?.lowest_cloud_cover && (
                   <div className="mt-3 p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-300 space-y-1">
                     <div>
-                      <span className="text-slate-400">Nuvens na passagem recente:</span>{' '}
+                      <span className="text-slate-400">Recent pass cloud cover:</span>{' '}
                       <span className="font-bold text-rose-400">
                         {error.detail.lowest_cloud_cover.toFixed(1)}%
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400">Limite atual configurado:</span>{' '}
+                      <span className="text-slate-400">Configured limit:</span>{' '}
                       <span className="font-semibold text-slate-200">{maxCloudCover}%</span>
                     </div>
                     {error.detail.recommendation && (
@@ -263,7 +259,7 @@ export default function DashboardPage() {
                       }}
                       className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-colors"
                     >
-                      Ajustar Limite para {Math.ceil(error.detail.lowest_cloud_cover + 5)}% e Repetir
+                      Adjust Limit to {Math.ceil(error.detail.lowest_cloud_cover + 5)}% & Retry
                     </button>
                   )}
                   <button
@@ -271,7 +267,7 @@ export default function DashboardPage() {
                     className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium border border-slate-800 transition-colors"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Tentar Novamente</span>
+                    <span>Try Again</span>
                   </button>
                 </div>
               </div>

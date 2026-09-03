@@ -9,10 +9,10 @@ interface LoadingStateProps {
 }
 
 const STEPS = [
-  { id: 1, title: 'Conectando ao catálogo STAC Copernicus Sentinel-2 L2A' },
-  { id: 2, title: 'Pesquisando passagem orbital recente e verificando nuvens' },
-  { id: 3, title: 'Lendo Bandas 4 (Red) e 8 (NIR) via HTTP Range Requests (rasterio)' },
-  { id: 4, title: 'Calculando matriz NDVI (NumPy) e gerando colormap de calor' },
+  { id: 1, title: 'Connecting to Copernicus Sentinel-2 L2A STAC catalog' },
+  { id: 2, title: 'Querying recent orbital passes and filtering cloud cover' },
+  { id: 3, title: 'Reading Band 4 (Red) and Band 8 (NIR) via HTTP Range Requests (rasterio)' },
+  { id: 4, title: 'Computing NDVI matrix (NumPy) and generating spectral colormap' },
 ];
 
 export const LoadingState: React.FC<LoadingStateProps> = ({ lat, lon }) => {
@@ -38,11 +38,11 @@ export const LoadingState: React.FC<LoadingStateProps> = ({ lat, lon }) => {
         </div>
         <div>
           <h3 className="text-sm font-bold text-white flex items-center">
-            Processando Dados Geoespaciais
+            Processing Geospatial Data
             <Sparkles className="w-3.5 h-3.5 ml-2 text-emerald-400 animate-pulse" />
           </h3>
           <p className="text-xs text-slate-400">
-            Alvo: {lat.toFixed(4)}°, {lon.toFixed(4)}°
+            Target: {lat.toFixed(4)}°, {lon.toFixed(4)}°
           </p>
         </div>
       </div>
@@ -84,7 +84,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({ lat, lon }) => {
       </div>
 
       <div className="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-500 text-center">
-        A extrair apenas os blocos espaciais necessários via Cloud Optimized GeoTIFF
+        Extracting only required spatial blocks via Cloud Optimized GeoTIFF
       </div>
     </div>
   );

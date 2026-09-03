@@ -26,6 +26,7 @@ class Settings(BaseSettings):
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "https://*.vercel.app",
+        "https://miguel-galrito.github.io",
     ]
 
     @field_validator("CORS_ORIGINS", mode="before")
@@ -40,7 +41,7 @@ class Settings(BaseSettings):
     # Geospatial / STAC Configuration
     STAC_API_URL: str = "https://earth-search.aws.element84.com/v1"
     STAC_COLLECTION: str = "sentinel-2-l2a"
-    STAC_TIMEOUT_SECONDS: float = 20.0
+    STAC_TIMEOUT_SECONDS: float = 25.0
     
     # Analysis Defaults
     DEFAULT_MAX_CLOUD_COVER: float = 20.0

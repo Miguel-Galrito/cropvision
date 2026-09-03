@@ -8,6 +8,7 @@ import base64
 import io
 from typing import Any, Dict, List, Optional, Tuple
 
+import certifi
 import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend for server environments
 import matplotlib.pyplot as plt
@@ -27,50 +28,50 @@ from app.schemas.analysis import (
 
 
 class NDVIService:
-    """Service to process satellite bands and calculate vegetation metrics."""
+    """Service to process satellite bands and compute vegetation metrics."""
 
     @staticmethod
     def get_interpretation(mean_ndvi: float) -> VegetationInterpretation:
-        """Translates numeric NDVI into agronomic and environmental interpretation."""
+        """Translates numeric NDVI value into agronomic and environmental interpretation."""
         if mean_ndvi >= 0.60:
             return VegetationInterpretation(
                 category=VegetationCategory.DENSE_VEGETATION,
-                label="Vegetação Densa e Saudável",
+                label="Dense Healthy Vegetation",
                 badge_color="emerald",
-                description="Dossel vegetal vigoroso com alto índice de área foliar e intensa atividade fotossintética.",
-                recommendation="Condições ideais de desenvolvimento. Manter regime atual de rega e nutrição.",
+                description="Vigorous crop canopy with high leaf area index and intense photosynthetic activity.",
+                recommendation="Ideal growth conditions. Maintain current irrigation schedule and nutrition plan.",
             )
         elif mean_ndvi >= 0.35:
             return VegetationInterpretation(
                 category=VegetationCategory.MODERATE_VEGETATION,
-                label="Vegetação Moderada / Desenvolvimento",
+                label="Moderate Vegetation / Developing",
                 badge_color="green",
-                description="Densidade vegetal moderada, característica de culturas em crescimento ou pastagens estáveis.",
-                recommendation="Monitorizar a humidade do solo e avaliar necessidade de reforço de fertilização azotada.",
+                description="Moderate vegetative density typical of growing crops, semi-dense pasture, or orchard canopy.",
+                recommendation="Monitor soil moisture levels and evaluate nitrogen top-dressing requirements.",
             )
         elif mean_ndvi >= 0.18:
             return VegetationInterpretation(
                 category=VegetationCategory.SPARSE_VEGETATION,
-                label="Vegetação Esparsa / Stress Hídrico",
+                label="Sparse Vegetation / Moisture Stress",
                 badge_color="amber",
-                description="Baixo vigor vegetativo. Indicativo de stress hídrico, cobertura de solo rala ou pós-colheita.",
-                recommendation="Inspecionar setores de rega na parcela para descartar obstruções ou défice hídrico localizado.",
+                description="Low vegetative vigor. Indicative of water deficit stress, thin crop stand, or post-harvest residue.",
+                recommendation="Inspect plot irrigation sectors to rule out emitter clogs or localized moisture deficits.",
             )
         elif mean_ndvi >= 0.0:
             return VegetationInterpretation(
                 category=VegetationCategory.BARE_SOIL,
-                label="Solo Exposto / Pousio",
+                label="Bare Soil / Fallow Ground",
                 badge_color="stone",
-                description="Predomínio de solo descoberto, terra arada, rocha ou estruturas antrópicas sem biomassa ativa.",
-                recommendation="Parcela preparada para sementeira ou em pousio. Sem risco imediato de infestantes.",
+                description="Predominance of bare ground, tilled earth, rock outcrop, or non-vegetated infrastructure.",
+                recommendation="Plot is prepared for seeding or in fallow state. No immediate weed pressure detected.",
             )
         else:
             return VegetationInterpretation(
                 category=VegetationCategory.WATER_OR_INERT,
-                label="Corpo de Água / Zona Inerte",
+                label="Water Body / Saturated Zone",
                 badge_color="sky",
-                description="Forte absorção na banda de infravermelho próximo (NIR), indicando água livre ou solo encharcado.",
-                recommendation="Zona de charca, albufeira ou linha de drenagem natural do terreno.",
+                description="Strong absorption in the Near-Infrared (NIR) band, indicative of open water or waterlogged ground.",
+                recommendation="Natural reservoir, irrigation pond, or wetland drainage line.",
             )
 
     def read_cog_window(
@@ -83,8 +84,6 @@ class NDVIService:
         Reads a spatial window for Band 4 (Red) and Band 8 (NIR) from remote Cloud Optimized GeoTIFFs
         using HTTP Range Requests through GDAL/Rasterio virtual file system.
         """
-        import certifi
-
         rasterio_env = {
             "AWS_NO_SIGN_REQUEST": settings.AWS_NO_SIGN_REQUEST,
             "GDAL_DISABLE_READDIR_ON_OPEN": settings.GDAL_DISABLE_READDIR_ON_OPEN,
@@ -120,7 +119,7 @@ class NDVIService:
         w = min(red_data.shape[1], nir_data.shape[1])
         
         if h < 5 or w < 5:
-            raise ValueError(f"Dimensão da janela espacial insuficiente ({h}x{w} pixels). Aumente o buffer.")
+            raise ValueError(f"Spatial sampling window too small ({h}x{w} pixels). Increase the buffer radius.")
 
         return red_data[:h, :w], nir_data[:h, :w]
 
@@ -206,10 +205,10 @@ class NDVIService:
     ) -> Tuple[np.ndarray, NDVIStatistics]:
         """
         Generates calibrated synthetic NDVI data in case external public cloud S3
-        encounters transient network errors or rate limits.
-        Ensures continuous SaaS uptime and seamless UI testing.
+        encounters transient network timeouts or rate limits.
+        Ensures continuous SaaS uptime and seamless user experience.
         """
-        logger.info("Generating calibrated synthetic NDVI raster for coords (%s, %s)", lat, lon)
+        logger.info("Generating calibrated synthetic NDVI raster for coordinates (%s, %s)", lat, lon)
         np.random.seed(int(abs(lat * 1000 + lon * 100)) % (2**31))
 
         # Determine baseline by latitude / agricultural zones

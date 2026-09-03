@@ -17,8 +17,8 @@ router = APIRouter()
     "/health",
     response_model=HealthResponse,
     status_code=status.HTTP_200_OK,
-    summary="Verificação de integridade do serviço",
-    description="Retorna o status operacional da API e a conectividade com o catálogo STAC do Copernicus Sentinel-2.",
+    summary="Service Health Check",
+    description="Returns operational status of the API service and connectivity to Copernicus Sentinel-2 STAC catalog.",
 )
 async def check_health() -> HealthResponse:
     stac_status = "connected"

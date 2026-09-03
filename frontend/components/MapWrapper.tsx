@@ -20,7 +20,7 @@ const DynamicMap = dynamic(
     loading: () => (
       <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-400">
         <Loader2 className="w-8 h-8 text-emerald-400 animate-spin mb-3" />
-        <span className="text-xs font-medium">A carregar mapa geoespacial...</span>
+        <span className="text-xs font-medium">Loading geospatial map tiles...</span>
       </div>
     ),
   }
