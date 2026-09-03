@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
-const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
+const isVercel = process.env.VERCEL === '1';
+const isGithubActions = process.env.GITHUB_ACTIONS === 'true' && !isVercel;
 const basePath = isGithubActions ? '/sat-health-api' : '';
 
 const nextConfig = {

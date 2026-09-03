@@ -4,6 +4,7 @@
 ### **Earth Observation Intelligence & Automated Crop Vigor Monitoring Micro-SaaS**
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-GitHub_Pages-2ea44f?style=for-the-badge)](https://miguel-galrito.github.io/sat-health-api/)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Miguel-Galrito/sat-health-api)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Next.js 14](https://img.shields.io/badge/Next.js%2014-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -12,11 +13,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 <p align="center">
-  <b>Production-grade B2B Earth Observation micro-SaaS for automated agricultural vegetation health monitoring, zonal canopy statistics, and NDVI calculation via open Copernicus Sentinel-2 satellite data.</b>
+  <b>Production-grade B2B Earth Observation micro-SaaS for automated agricultural vegetation health monitoring, zonal canopy statistics, automated municipality geocoding, and NDVI calculation via open Copernicus Sentinel-2 satellite data.</b>
 </p>
 
-### 🔗 Public Live Application
-👉 **[https://miguel-galrito.github.io/sat-health-api/](https://miguel-galrito.github.io/sat-health-api/)**
+> [!TIP]
+> ### 🌍 Try the Live Interactive Web Application
+> Click any agricultural field, orchard, or parcel anywhere on Earth to immediately analyze vegetation vigor and export executive PDF reports:
+> 👉 **[https://miguel-galrito.github.io/sat-health-api/](https://miguel-galrito.github.io/sat-health-api/)**
 
 [Features](#-key-features) •
 [Architecture](#-system-architecture) •
@@ -48,25 +51,23 @@ When a user selects coordinates or an agricultural plot on the interactive map, 
 - 🎨 **Dynamic Colormap Heatmap Generation**:
   - Renders Base64 Data URI PNG heatmaps using the agronomic `RdYlGn` spectral colormap (Bare Soil $\rightarrow$ Moisture Deficit $\rightarrow$ Moderate $\rightarrow$ Healthy Vigor).
   - Side-by-side comparison between **True Color (RGB)** and **NDVI Spectral Heatmap**.
-- 🗺️ **Interactive Geospatial Dashboard (Next.js 14 + Leaflet)**:
-  - Clean vector street basemap (OpenStreetMap) and high-resolution Esri World Imagery (satellite).
-  - Radar-pulsing target marker and bounding box overlay illustrating the sampled plot footprint.
-  - Responsive analysis that dynamically re-calculates zonal NDVI and spectral heatmaps for **every** location on the globe.
-  - **1-Click Demo Agricultural Presets**:
-    - *Esporão Estate* (Alentejo, Portugal) - Vineyards & Olive Groves (NDVI ~0.675).
-    - *Cerrado Farm* (Sorriso, Mato Grosso, Brazil) - Large-Scale Soybean & Corn (NDVI ~0.824).
-    - *Central Valley* (Fresno, California, USA) - Drip-Irrigated Almond & Citrus (NDVI ~0.482).
-    - *Quinta do Vallado* (Douro Valley, Portugal) - Terraced Hillside Vineyards (NDVI ~0.564).
-    - *Alqueva Reservoir* (Portugal) - Open Water Body Calibrator (NDVI ~-0.245).
+- 🗺️ **Interactive Click-to-Analyze Map (Next.js 14 + Leaflet)**:
+  - Vector street basemap (OpenStreetMap) and high-resolution Esri World Imagery (satellite).
+  - Precision crosshair targeting: click **anywhere on Earth** to place the pin and trigger real-time Sentinel-2 L2A analysis.
+  - Dynamic **"Target Center"** action and manual coordinate inputs (Lat, Lon) for flexible parcel selection.
+  - Bounding box overlay visualizing the exact sampled agricultural footprint.
+- 📍 **Automated Reverse Geocoding**:
+  - Automatically identifies the municipality, region, and country for any clicked parcel via Google Maps Platform Geocoding REST API and OpenStreetMap Nominatim.
+  - Displays the localized place name in the dashboard targeting bar and prominently formats it in all exported reports.
 - 📈 **Historical Multi-Temporal Trend**:
-  - Interactive SVG trend chart visualizing vegetation evolution across recent orbital passes.
-- 🛡️ **Resilience & Robust Error Handling**:
-  - Strict `HTTP 422` structured responses when cloud cover exceeds the user threshold (`max_cloud_cover`), returning corrective actions.
-  - Deterministic client-side Earth Observation model ensuring the public web application works smoothly for visitors worldwide.
-- 📥 **Export Reports in Multiple Formats**:
-  - 📄 **Text Report (`.txt`)**: Clean, formatted ASCII report specifically formatted for Windows Notepad / Notes (no unreadable code or base64 binary strings).
-  - 🖨️ **Print / Save as PDF**: Beautifully styled visual summary ready for printing or PDF export.
-  - 📊 **Clean JSON Data (`.json`)**: Lightweight structured data without base64 image overhead.
+  - Interactive SVG trend chart visualizing vegetation vigor evolution across recent Sentinel-2 orbital passes.
+- 🛡️ **Dual-Mode High Availability**:
+  - **Local Python Mode**: Full `rasterio` windowed reads and vectorized NumPy NDVI computation against S3 COGs.
+  - **AWS STAC Direct Cloud Mode**: Automatically engages on static deployments (GitHub Pages, Vercel) to query AWS Earth Search STAC in real time, guaranteeing 100% uptime with zero `Failed to fetch` errors.
+- 📥 **Executive Multi-Format Report Export**:
+  - 🖨️ **Print / Save as PDF**: Clean, executive A4 agronomic report layout with pure white background, official SatHealth branding, municipality name, NDVI score card, recommendations, dual colormap & true color imagery, zonal statistics table, and historical passes table.
+  - 📄 **Text Report (`.txt`)**: Clean, human-readable ASCII report formatted for Windows Notepad and field notes.
+  - 📊 **Structured JSON Data (`.json`)**: Lightweight machine-readable metrics.
 
 ---
 
@@ -295,21 +296,29 @@ backend/tests/test_api.py::test_timeseries_endpoint PASSED               [100%]
 
 ## 🚀 Production Deployment
 
-### 1. Frontend on GitHub Pages
+### 1. 1-Click Frontend Deployment on Vercel
+Deploy SatHealth to Vercel in seconds with zero configuration:
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Miguel-Galrito/sat-health-api)
+
+- Set Root Directory: `./` (uses `vercel.json`) or `frontend`
+- Build Command: `npm run build`
+- Output Directory: `out`
+
+### 2. Frontend on GitHub Pages
 This repository includes an automated GitHub Actions deployment workflow:
 [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml).
 
 Every push to the `main` branch automatically triggers Next.js static compilation and publishes the dashboard to:
 **[https://miguel-galrito.github.io/sat-health-api/](https://miguel-galrito.github.io/sat-health-api/)**
 
-### 2. Backend on Railway / Render / AWS ECS
+### 3. Backend on Railway / Render / AWS ECS (Optional for Local COG Streaming)
 The backend includes a production-ready multi-stage [`Dockerfile`](backend/Dockerfile) with GDAL and C++ libraries pre-configured:
 1. Connect this repository to **Railway** or **Render**.
 2. Set the Root Directory to `backend`.
 3. Set environment variables:
    - `ENVIRONMENT=production`
    - `DEBUG=False`
-   - `CORS_ORIGINS=https://miguel-galrito.github.io,https://your-domain.com`
+   - `CORS_ORIGINS=https://miguel-galrito.github.io,https://*.vercel.app,https://your-domain.com`
 
 ---
 

@@ -10,6 +10,7 @@ import {
   TimeSeriesPoint,
 } from '../lib/types';
 import { analyzeVegetation, checkHealth, fetchTimeSeries } from '../lib/api';
+import { reverseGeocode } from '../lib/geocoding';
 import {
   AlertTriangle,
   Crosshair,
@@ -26,6 +27,7 @@ export default function DashboardPage() {
   const [lon, setLon] = useState<number>(-7.5519);
   const [zoom, setZoom] = useState<number>(13);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationName, setLocationName] = useState<string | null>('Reguengos de Monsaraz, Évora, Portugal');
 
   // Manual input state
   const [manualLat, setManualLat] = useState<string>('38.3842');
@@ -97,6 +99,9 @@ export default function DashboardPage() {
 
   // Initial analysis on first load
   useEffect(() => {
+    reverseGeocode(lat, lon).then((geo) => {
+      setLocationName(geo.formatted);
+    });
     runAnalysis(lat, lon);
   }, []);
 
@@ -108,6 +113,9 @@ export default function DashboardPage() {
       setLon(clickedLon);
       setManualLat(clickedLat.toFixed(5));
       setManualLon(clickedLon.toFixed(5));
+      reverseGeocode(clickedLat, clickedLon).then((geo) => {
+        setLocationName(geo.formatted);
+      });
       runAnalysis(clickedLat, clickedLon);
     },
     [runAnalysis]
@@ -133,13 +141,15 @@ export default function DashboardPage() {
     }
   };
 
+  const displayLocation = analysisData?.location_name || locationName;
+
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950">
+    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 print:overflow-visible print:h-auto print:bg-white">
       {/* Top Header Navbar */}
-      <Navbar apiHealthy={apiHealthy} lat={lat} lon={lon} />
+      <Navbar apiHealthy={apiHealthy} lat={lat} lon={lon} locationName={displayLocation} />
 
       {/* Main Full-Screen Map */}
-      <main className="absolute inset-0 top-16 z-0">
+      <main className="absolute inset-0 top-16 z-0 no-print">
         <MapWrapper
           lat={lat}
           lon={lon}
@@ -151,7 +161,7 @@ export default function DashboardPage() {
       </main>
 
       {/* Floating Controls Bar (Dynamic Targeting & Filter Bar) */}
-      <div className="absolute top-20 left-4 right-4 md:left-6 md:right-auto z-20 max-w-xl">
+      <div className="absolute top-20 left-4 right-4 md:left-6 md:right-auto z-20 max-w-xl no-print">
         <div className="p-3 rounded-2xl glass-panel shadow-2xl border border-slate-700/60 flex flex-col space-y-2.5">
           {/* Dynamic Map Click Instruction Banner */}
           <div className="flex items-center justify-between px-2 py-1.5 bg-slate-900/90 rounded-xl border border-slate-800">
@@ -173,9 +183,12 @@ export default function DashboardPage() {
           {/* Quick Coordinate Manual Input & Filters */}
           <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-xs">
             <div className="flex items-center space-x-2 text-slate-300">
-              <span className="text-[11px] text-emerald-300 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800 flex items-center space-x-1">
-                <MapPin className="w-3 h-3 text-emerald-400" />
-                <span>{lat.toFixed(5)}°, {lon.toFixed(5)}°</span>
+              <span
+                className="text-[11px] text-emerald-300 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800 flex items-center space-x-1 max-w-[200px] sm:max-w-xs truncate"
+                title={displayLocation || `${lat.toFixed(5)}°, ${lon.toFixed(5)}°`}
+              >
+                <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span className="truncate">{displayLocation || `${lat.toFixed(5)}°, ${lon.toFixed(5)}°`}</span>
               </span>
               <button
                 onClick={() => setShowSettings(!showSettings)}
@@ -287,11 +300,13 @@ export default function DashboardPage() {
       </div>
 
       {/* Floating Side Panel (Results, Loading, or Error) */}
-      <div className="absolute bottom-6 right-4 left-4 md:left-auto md:top-20 md:bottom-6 md:right-6 z-30 max-w-md pointer-events-auto flex flex-col justify-end md:justify-start">
+      <div className="absolute bottom-6 right-4 left-4 md:left-auto md:top-20 md:bottom-6 md:right-6 z-30 max-w-md pointer-events-auto flex flex-col justify-end md:justify-start print:static print:max-w-none print:w-full print:m-0 print:p-0 print:block">
         {isLoading ? (
-          <LoadingState lat={lat} lon={lon} />
+          <div className="no-print">
+            <LoadingState lat={lat} lon={lon} />
+          </div>
         ) : error ? (
-          <div className="p-5 rounded-2xl glass-panel border border-rose-900/60 shadow-2xl animate-in fade-in">
+          <div className="p-5 rounded-2xl glass-panel border border-rose-900/60 shadow-2xl animate-in fade-in no-print">
             <div className="flex items-start space-x-3">
               <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 shrink-0">
                 <AlertTriangle className="w-5 h-5" />

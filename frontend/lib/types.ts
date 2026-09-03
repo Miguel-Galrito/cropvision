@@ -55,6 +55,7 @@ export interface AnalyzeResponse {
   interpretation: VegetationInterpretation;
   thumbnail_url: string;
   true_color_thumbnail?: string | null;
+  location_name?: string;
   is_simulated: boolean;
   processing_time_ms: number;
 }

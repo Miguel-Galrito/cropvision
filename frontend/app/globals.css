@@ -101,3 +101,58 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.8);
 }
+
+/* ==========================================================================
+   Print / PDF Export Styles (Clean Executive A4 Document)
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 1.2cm 1.4cm;
+    size: A4 portrait;
+  }
+
+  *, *::before, *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide all website chrome, background Leaflet maps, buttons and floating panels */
+  header,
+  main,
+  nav,
+  .leaflet-container,
+  .leaflet-control-container,
+  .leaflet-pane,
+  .no-print,
+  button,
+  [role="tooltip"] {
+    display: none !important;
+  }
+
+  /* Hide interactive floating analysis card container */
+  .interactive-ui-element {
+    display: none !important;
+  }
+
+  /* Make print-only document visible and full-width */
+  .print-only-report {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    page-break-inside: avoid;
+  }
+}
