@@ -161,30 +161,33 @@ export default function DashboardPage() {
       </main>
 
       {/* Floating Controls Bar (Dynamic Targeting & Filter Bar) */}
-      <div className="absolute top-20 left-4 right-4 md:left-6 md:right-auto z-20 max-w-xl no-print">
-        <div className="p-3 rounded-2xl glass-panel shadow-2xl border border-slate-700/60 flex flex-col space-y-2.5">
+      <div className="absolute top-16 sm:top-20 left-3 right-3 sm:left-6 sm:right-auto z-20 max-w-xl no-print">
+        <div className="p-2.5 sm:p-3 rounded-2xl glass-panel shadow-2xl border border-slate-700/60 flex flex-col space-y-2">
           {/* Dynamic Map Click Instruction Banner */}
-          <div className="flex items-center justify-between px-2 py-1.5 bg-slate-900/90 rounded-xl border border-slate-800">
-            <div className="flex items-center space-x-2.5">
-              <div className="flex h-2.5 w-2.5 relative">
+          <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-900/90 rounded-xl border border-slate-800">
+            <div className="flex items-center space-x-2">
+              <div className="flex h-2 w-2 sm:h-2.5 sm:w-2.5 relative shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-emerald-500"></span>
               </div>
               <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-100">
-                <Crosshair className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Live Map Targeting Active</span>
+                <Crosshair className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Targeting Active</span>
               </div>
             </div>
-            <span className="text-[11px] text-emerald-400 font-medium">
-              Click anywhere on the map to analyze
+            <span className="text-[11px] text-emerald-400 font-medium hidden sm:inline">
+              Click anywhere on map to analyze
+            </span>
+            <span className="text-[11px] text-emerald-400 font-medium sm:hidden">
+              Tap map to analyze
             </span>
           </div>
 
           {/* Quick Coordinate Manual Input & Filters */}
-          <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-xs">
-            <div className="flex items-center space-x-2 text-slate-300">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1 border-t border-slate-800/80 text-xs">
+            <div className="flex items-center space-x-2 text-slate-300 min-w-0">
               <span
-                className="text-[11px] text-emerald-300 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800 flex items-center space-x-1 max-w-[200px] sm:max-w-xs truncate"
+                className="text-[11px] text-emerald-300 font-mono bg-slate-900 px-2 py-1 rounded-lg border border-slate-800 flex items-center space-x-1 max-w-[150px] sm:max-w-xs truncate"
                 title={displayLocation || `${lat.toFixed(5)}°, ${lon.toFixed(5)}°`}
               >
                 <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
@@ -192,18 +195,18 @@ export default function DashboardPage() {
               </span>
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg border text-xs transition-colors ${
+                className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg border text-xs transition-colors shrink-0 ${
                   showSettings
                     ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
                     : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
                 }`}
               >
                 <Sliders className="w-3 h-3" />
-                <span>Controls ({maxCloudCover}%)</span>
+                <span>Filters ({maxCloudCover}%)</span>
               </button>
             </div>
 
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1.5 justify-end">
               {isMapPannedAway && mapCenter && (
                 <button
                   onClick={() => handleSelectCoordinate(mapCenter.lat, mapCenter.lon)}
@@ -211,8 +214,8 @@ export default function DashboardPage() {
                   className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 font-medium text-xs border border-emerald-500/30 transition-all shadow-sm"
                   title="Place pin and analyze the center of your current view"
                 >
-                  <LocateFixed className="w-3 h-3 text-emerald-400" />
-                  <span>Target Center</span>
+                  <LocateFixed className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span>Center</span>
                 </button>
               )}
 
@@ -222,7 +225,7 @@ export default function DashboardPage() {
                 className="flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md shadow-emerald-600/30 transition-all disabled:opacity-50"
               >
                 <Play className="w-3 h-3 fill-current" />
-                <span>Re-analyze</span>
+                <span>Analyze</span>
               </button>
             </div>
           </div>
@@ -300,7 +303,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Floating Side Panel (Results, Loading, or Error) */}
-      <div className="absolute bottom-6 right-4 left-4 md:left-auto md:top-20 md:bottom-6 md:right-6 z-30 max-w-md pointer-events-auto flex flex-col justify-end md:justify-start print:static print:max-w-none print:w-full print:m-0 print:p-0 print:block">
+      <div className="absolute bottom-3 left-3 right-3 sm:bottom-6 sm:right-4 sm:left-4 md:left-auto md:top-20 md:bottom-6 md:right-6 z-30 max-w-md pointer-events-auto flex flex-col justify-end md:justify-start print:static print:max-w-none print:w-full print:m-0 print:p-0 print:block">
         {isLoading ? (
           <div className="no-print">
             <LoadingState lat={lat} lon={lon} />

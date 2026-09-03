@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AnalyzeResponse,
   TimeSeriesPoint,
@@ -11,7 +11,9 @@ import {
   Printer,
   X,
   ChevronDown,
+  ChevronUp,
   MapPin,
+  Satellite,
 } from 'lucide-react';
 import { TimeSeriesChart } from './TimeSeriesChart';
 
@@ -28,6 +30,13 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'ndvi' | 'true_color'>('ndvi');
   const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [tcImgError, setTcImgError] = useState<boolean>(false);
+
+  // Reset image error state when scene changes
+  useEffect(() => {
+    setTcImgError(false);
+  }, [data.scene_id]);
 
   // NDVI score clamped between -1.0 and 1.0
   const ndviScore = data.ndvi.mean;
@@ -179,16 +188,56 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
   const latFormatted = data.coordinates.lat >= 0 ? `${data.coordinates.lat.toFixed(5)}° N` : `${Math.abs(data.coordinates.lat).toFixed(5)}° S`;
   const lonFormatted = data.coordinates.lon >= 0 ? `${data.coordinates.lon.toFixed(5)}° E` : `${Math.abs(data.coordinates.lon).toFixed(5)}° W`;
 
+  // Collapsed Minimal Mobile Pill State
+  if (isCollapsed) {
+    return (
+      <div className="w-full max-w-md rounded-2xl glass-panel border border-slate-700/70 shadow-2xl p-3 interactive-ui-element print:hidden animate-in fade-in slide-in-from-bottom-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2.5 min-w-0 flex-1 mr-2">
+            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${data.interpretation.badge_color === 'emerald' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-white truncate">
+                {data.location_name || 'Agricultural Parcel'}
+              </div>
+              <div className="text-[11px] text-slate-400 flex items-center space-x-1.5 truncate">
+                <span className="font-semibold text-emerald-400 font-mono">{ndviScore.toFixed(3)} NDVI</span>
+                <span>•</span>
+                <span className="truncate">{data.interpretation.label}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-1 shrink-0">
+            <button
+              onClick={() => setIsCollapsed(false)}
+              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-colors"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+              <span>Expand</span>
+            </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Screen Interactive UI Card */}
-      <div className="w-full max-w-md rounded-2xl glass-panel border border-slate-700/70 shadow-2xl p-5 overflow-y-auto max-h-[88vh] scrollbar-thin interactive-ui-element print:hidden">
-        {/* Header */}
+      <div className="w-full max-w-md rounded-2xl glass-panel border border-slate-700/70 shadow-2xl p-4 sm:p-5 overflow-y-auto max-h-[78vh] sm:max-h-[85vh] scrollbar-thin interactive-ui-element print:hidden">
+        {/* Header with Title and Minimize Button */}
         <div className="flex items-start justify-between pb-3 border-b border-slate-800/80">
-          <div>
-            <div className="flex items-center space-x-2">
+          <div className="min-w-0 pr-2">
+            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
               <span
-                className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${currentTheme.bg} ${currentTheme.text} ${currentTheme.border}`}
+                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${currentTheme.bg} ${currentTheme.text} ${currentTheme.border}`}
               >
                 {data.interpretation.label}
               </span>
@@ -198,32 +247,45 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
                 </span>
               )}
             </div>
-            <h2 className="text-base font-bold text-white mt-1.5 flex items-center">
+            <h2 className="text-sm sm:text-base font-bold text-white mt-1.5 flex items-center truncate">
               Crop Vigor Diagnosis
             </h2>
             {data.location_name && (
               <div className="flex items-center space-x-1.5 text-xs text-emerald-400 font-medium mt-1">
                 <MapPin className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-                <span className="truncate max-w-[280px]">{data.location_name}</span>
+                <span className="truncate max-w-[240px] sm:max-w-[280px]" title={data.location_name}>
+                  {data.location_name}
+                </span>
               </div>
             )}
           </div>
-          {onClose && (
+          <div className="flex items-center space-x-1 shrink-0">
+            {/* Collapse on mobile toggle */}
             <button
-              onClick={onClose}
+              onClick={() => setIsCollapsed(true)}
               className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              title="Minimize panel to see map"
             >
-              <X className="w-4 h-4" />
+              <ChevronDown className="w-4 h-4" />
             </button>
-          )}
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                title="Close panel"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Main Score Gauge */}
-        <div className="my-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+        <div className="my-3.5 p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-slate-800">
           <div className="flex items-baseline justify-between mb-2">
             <span className="text-xs text-slate-400 font-medium">Zonal Mean NDVI</span>
             <div className="flex items-baseline space-x-1">
-              <span className="text-3xl font-extrabold text-white tracking-tight">
+              <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                 {ndviScore.toFixed(3)}
               </span>
               <span className="text-xs text-slate-500 font-mono">/ 1.00</span>
@@ -231,26 +293,25 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
           </div>
 
           {/* Color Spectrum Progress Bar */}
-          <div className="relative w-full h-3 rounded-full overflow-hidden bg-slate-800 p-0.5 border border-slate-700/50">
+          <div className="relative w-full h-2.5 sm:h-3 rounded-full overflow-hidden bg-slate-800 p-0.5 border border-slate-700/50">
             <div
               className="h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-red-600 via-amber-400 to-emerald-500"
               style={{ width: `${Math.max(8, percentageScore)}%` }}
             />
           </div>
 
-          <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
-            <span>-0.2 Water/Inert</span>
-            <span>0.2 Bare Soil</span>
-            <span>0.4 Moderate</span>
-            <span>0.8+ Dense</span>
+          <div className="flex justify-between text-[9px] sm:text-[10px] text-slate-400 mt-1.5 font-mono">
+            <span>Soil / Dry</span>
+            <span>Moderate</span>
+            <span>Vigorous Canopy</span>
           </div>
         </div>
 
         {/* Diagnosis & Recommendations */}
-        <div className="space-y-3 text-xs">
+        <div className="space-y-2.5 text-xs">
           <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
             <h3 className="font-semibold text-slate-200 mb-1">Agronomic Status</h3>
-            <p className="text-slate-400 leading-relaxed">
+            <p className="text-slate-400 leading-relaxed text-[11px] sm:text-xs">
               {data.interpretation.description}
             </p>
           </div>
@@ -259,14 +320,14 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
             <h3 className="font-semibold text-emerald-300 mb-1 flex items-center space-x-1">
               <span>Recommendation</span>
             </h3>
-            <p className="text-emerald-400/90 leading-relaxed">
+            <p className="text-emerald-400/90 leading-relaxed text-[11px] sm:text-xs">
               {data.interpretation.recommendation}
             </p>
           </div>
         </div>
 
         {/* Imagery & Spatial Colormap Viewer with Tabs */}
-        <div className="mt-4 pt-4 border-t border-slate-800">
+        <div className="mt-3.5 pt-3 border-t border-slate-800">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-semibold text-slate-300">
               Parcel Surface Visualization
@@ -308,27 +369,36 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
               ) : (
                 <span className="text-xs text-slate-500">Generating colormap...</span>
               )
-            ) : data.true_color_thumbnail ? (
+            ) : data.true_color_thumbnail && !tcImgError ? (
               <img
                 src={data.true_color_thumbnail}
                 alt="Sentinel-2 True Color (TCI)"
+                onError={() => setTcImgError(true)}
                 className="w-full h-full object-cover"
               />
-            ) : null}
+            ) : (
+              <div className="flex flex-col items-center justify-center p-6 text-center text-slate-400 space-y-2">
+                <Satellite className="w-7 h-7 text-emerald-400/80 animate-pulse" />
+                <span className="text-xs font-semibold text-slate-200">Copernicus Multispectral Pass</span>
+                <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
+                  Near-Infrared (B08) and Red (B04) radiometric bands processed directly for high-precision NDVI canopy scoring.
+                </p>
+              </div>
+            )}
 
             {/* Gradient scale overlay on NDVI tab */}
             {activeTab === 'ndvi' && (
-              <div className="absolute bottom-2 left-2 right-2 p-1.5 rounded-lg bg-slate-950/80 backdrop-blur-md border border-slate-800/80 flex items-center justify-between text-[9px] text-slate-300 font-mono">
+              <div className="absolute bottom-2 left-2 right-2 p-1.5 rounded-lg bg-slate-950/85 backdrop-blur-md border border-slate-800/80 flex items-center justify-between text-[9px] text-slate-300 font-mono">
                 <span className="flex items-center">
-                  <span className="w-2 h-2 rounded-full bg-red-600 mr-1" />
-                  Soil / Dry
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600 mr-1" />
+                  Soil
                 </span>
                 <span className="flex items-center">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 mr-1" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1" />
                   Moderate
                 </span>
                 <span className="flex items-center">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1" />
                   Healthy Vigor
                 </span>
               </div>
@@ -337,11 +407,11 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
         </div>
 
         {/* Zonal Statistics Grid */}
-        <div className="mt-4 pt-3 border-t border-slate-800">
+        <div className="mt-3.5 pt-3 border-t border-slate-800">
           <h3 className="text-xs font-semibold text-slate-300 mb-2">
             Zonal Parcel Statistics
           </h3>
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-center text-xs">
             <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
               <span className="text-[10px] text-slate-500 block">Minimum</span>
               <span className="font-mono text-slate-300 font-medium">
@@ -361,14 +431,14 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
               </span>
             </div>
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 px-1 font-mono">
+          <div className="mt-2 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 px-1 font-mono">
             <span>Canopy Homogeneity (Std Dev):</span>
             <span className="text-slate-200 font-semibold">±{data.ndvi.std.toFixed(3)}</span>
           </div>
         </div>
 
         {/* Satellite Granule & Sensor Metadata */}
-        <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] space-y-1.5 text-slate-400">
+        <div className="mt-3.5 pt-3 border-t border-slate-800 text-[10px] sm:text-[11px] space-y-1 text-slate-400">
           <div className="flex justify-between">
             <span>Satellite & Sensor:</span>
             <span className="font-mono text-slate-200">{data.platform}</span>
@@ -393,21 +463,21 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
             <span>Processing Latency:</span>
             <span className="font-mono text-slate-200">{data.processing_time_ms.toFixed(1)} ms</span>
           </div>
-          <div className="flex justify-between pt-1 border-t border-slate-800/60 text-[10px]">
-            <span className="text-slate-500">ID: {data.scene_id.slice(0, 22)}...</span>
+          <div className="flex justify-between pt-1 border-t border-slate-800/60 text-[9px] sm:text-[10px]">
+            <span className="text-slate-500 truncate max-w-[180px]">ID: {data.scene_id.slice(0, 20)}...</span>
             <span className="text-slate-500">{data.pixels_analyzed} pixels</span>
           </div>
         </div>
 
         {/* Historical Time Series Trend Chart */}
         {timeseries && timeseries.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-slate-800">
+          <div className="mt-3.5 pt-3 border-t border-slate-800">
             <TimeSeriesChart series={timeseries} />
           </div>
         )}
 
         {/* Action Footer with Export Options */}
-        <div className="mt-4 pt-3 border-t border-slate-800 relative">
+        <div className="mt-3.5 pt-3 border-t border-slate-800 relative">
           <div className="flex items-center justify-between">
             {/* Export Dropdown Toggle */}
             <div className="relative">
@@ -422,7 +492,7 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
 
               {/* Dropdown Menu */}
               {showExportMenu && (
-                <div className="absolute bottom-full left-0 mb-2 w-56 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 z-50 text-xs animate-in fade-in">
+                <div className="absolute bottom-full left-0 mb-2 w-52 sm:w-56 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 z-50 text-xs animate-in fade-in">
                   {/* 1. Text File for Notepad */}
                   <button
                     onClick={handleExportTextReport}
@@ -430,8 +500,8 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
                   >
                     <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
                     <div>
-                      <div className="font-semibold">Text Report (.txt)</div>
-                      <div className="text-[10px] text-slate-400">Clean & readable in Notepad</div>
+                      <div className="font-semibold text-xs">Text Report (.txt)</div>
+                      <div className="text-[10px] text-slate-400">Clean for Notepad</div>
                     </div>
                   </button>
 
@@ -442,8 +512,8 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
                   >
                     <Printer className="w-4 h-4 text-sky-400 shrink-0" />
                     <div>
-                      <div className="font-semibold">Print / Save as PDF</div>
-                      <div className="text-[10px] text-slate-400">Formatted visual summary</div>
+                      <div className="font-semibold text-xs">Print / Save as PDF</div>
+                      <div className="text-[10px] text-slate-400">Formatted executive report</div>
                     </div>
                   </button>
 
@@ -454,7 +524,7 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
                   >
                     <Download className="w-4 h-4 text-amber-400 shrink-0" />
                     <div>
-                      <div className="font-semibold">Clean JSON Data</div>
+                      <div className="font-semibold text-xs">Clean JSON Data</div>
                       <div className="text-[10px] text-slate-400">Lightweight raw metrics</div>
                     </div>
                   </button>
@@ -574,7 +644,7 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
             </div>
           </div>
 
-          {data.true_color_thumbnail ? (
+          {data.true_color_thumbnail && !tcImgError ? (
             <div className="p-3 rounded-xl border border-slate-200 bg-white text-center">
               <div className="text-[11px] font-bold text-slate-700 mb-1.5 uppercase">
                 Copernicus True Color (RGB)
@@ -589,7 +659,7 @@ Live App:   https://miguel-galrito.github.io/sat-health-api/
               </div>
             </div>
           ) : (
-            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-center items-center text-center">
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-center items-center text-center p-4">
               <div className="text-xs font-semibold text-slate-700 mb-1">Radiometric Spectrum</div>
               <p className="text-[10px] text-slate-500 max-w-xs leading-relaxed">
                 Calibrated against Sentinel-2 multispectral surface reflectance bands B04 (Red, 665nm) and B08 (Near-Infrared, 842nm) at 10m native spatial resolution.

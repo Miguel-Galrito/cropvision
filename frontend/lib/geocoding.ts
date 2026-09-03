@@ -25,10 +25,10 @@ export async function reverseGeocode(
 
   const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-  // 1. If Google Maps Platform API key is configured, use Google Maps Geocoding REST API
+  // 1. If Google Maps Platform API key is configured, use Google Maps Geocoding REST API with English language
   if (googleApiKey) {
     try {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${googleApiKey}`;
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${googleApiKey}&language=en`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -70,16 +70,17 @@ export async function reverseGeocode(
     }
   }
 
-  // 2. Default Zero-Config: OpenStreetMap Nominatim Reverse Geocoding
+  // 2. Default Zero-Config: OpenStreetMap Nominatim Reverse Geocoding (Enforcing English output)
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`,
       {
         headers: {
           'Accept': 'application/json',
+          'Accept-Language': 'en-US,en;q=0.9',
           'User-Agent': 'SatHealth-MicroSaaS/1.0',
         },
         signal: controller.signal,

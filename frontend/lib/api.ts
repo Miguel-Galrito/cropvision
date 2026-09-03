@@ -200,7 +200,21 @@ async function queryDirectAwsStac(payload: AnalyzeRequest): Promise<AnalyzeRespo
     ? Number(feature.properties['eo:cloud_cover'].toFixed(2))
     : 1.2;
   const sunElev = feature?.properties?.['view:sun_elevation'] || Number((54 + Math.abs(payload.lat * 0.15)).toFixed(1));
-  const visualThumb = feature?.assets?.visual?.href || feature?.assets?.thumbnail?.href || null;
+  // Extract browser-compatible RGB True Color thumbnail (JPEG/PNG, never raw GeoTIFF)
+  let visualThumb: string | null = null;
+  if (feature?.assets) {
+    const thumbAsset = feature.assets.thumbnail?.href || feature.assets.overview?.href || feature.assets.rendered_preview?.href;
+    if (thumbAsset && !thumbAsset.toLowerCase().endsWith('.tif') && !thumbAsset.toLowerCase().endsWith('.tiff')) {
+      visualThumb = thumbAsset;
+    } else if (feature.assets.visual?.href) {
+      const vHref = String(feature.assets.visual.href);
+      if (vHref.endsWith('/TCI.tif')) {
+        visualThumb = vHref.replace('/TCI.tif', '/preview.jpg');
+      } else if (!vHref.toLowerCase().endsWith('.tif')) {
+        visualThumb = vHref;
+      }
+    }
+  }
 
   // Biome-based NDVI calculation
   const seed = Math.abs(Math.sin(payload.lat * 12.9898 + payload.lon * 78.233) * 43758.5453) % 1;

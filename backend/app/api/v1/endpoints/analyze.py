@@ -97,10 +97,12 @@ async def analyze_vegetation(payload: AnalyzeRequest) -> AnalyzeResponse:
     sun_elevation = item.properties.get("view:sun_elevation")
     if sun_elevation is not None:
         sun_elevation = round(float(sun_elevation), 2)
-    
     true_color_thumb = band_urls.get("thumbnail") or band_urls.get("visual")
-
-    # 3. Stream COG Bands via HTTP Range Requests and compute NDVI
+    if true_color_thumb and isinstance(true_color_thumb, str):
+        if true_color_thumb.endswith("/TCI.tif"):
+            true_color_thumb = true_color_thumb.replace("/TCI.tif", "/preview.jpg")
+        elif true_color_thumb.lower().endswith((".tif", ".tiff")):
+            true_color_thumb = None
     is_simulated = False
     try:
         red_arr, nir_arr = await asyncio.to_thread(
