@@ -14,8 +14,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -46,6 +44,9 @@ frontend/out/
 node_modules/
 .next/
 out/
+
+# Whitelist frontend/lib/
+!frontend/lib/
 
 # Environment Variables (Keep examples committed, ignore local secrets)
 backend/.env
