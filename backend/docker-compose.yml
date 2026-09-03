@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sathealth-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=True
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - STAC_API_URL=https://earth-search.aws.element84.com/v1
+      - STAC_COLLECTION=sentinel-2-l2a
+    volumes:
+      - ./app:/app/app:ro
+    restart: unless-stopped
