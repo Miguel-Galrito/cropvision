@@ -116,6 +116,7 @@ class STACService:
             query={"eo:cloud_cover": {"lte": max_cloud_cover}},
             sortby=[{"field": "properties.datetime", "direction": "desc"}],
             limit=5,
+            max_items=5,
         )
 
         try:
@@ -133,6 +134,7 @@ class STACService:
                 datetime=datetime_range,
                 sortby=[{"field": "properties.datetime", "direction": "desc"}],
                 limit=3,
+                max_items=3,
             )
             fallback_items = list(fallback_search.items())
             
@@ -182,6 +184,7 @@ class STACService:
             query={"eo:cloud_cover": {"lte": max_cloud_cover}},
             sortby=[{"field": "properties.datetime", "direction": "desc"}],
             limit=limit,
+            max_items=limit,
         )
 
         try:

@@ -112,15 +112,17 @@ async def analyze_vegetation(payload: AnalyzeRequest) -> AnalyzeResponse:
         ndvi_matrix, ndvi_stats = ndvi_service.calculate_ndvi(red_arr, nir_arr)
         pixels_count = int(ndvi_matrix.size)
     except Exception as exc:
-        logger.warning(
-            f"Direct COG range reading via rasterio encountered an issue ({exc}). "
-            f"Falling back to calibrated high-fidelity simulation."
+        logger.error(
+            f"Direct COG range reading via rasterio failed for scene {scene_id}: {exc}"
         )
-        ndvi_matrix, ndvi_stats = ndvi_service.generate_fallback_simulation(
-            lat=payload.lat, lon=payload.lon, buffer_meters=payload.buffer_meters
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "COG_STREAMING_FAILED",
+                "message": f"Failed reading Red/NIR band Cloud-Optimized GeoTIFFs from AWS S3: {str(exc)}",
+                "scene_id": scene_id,
+            },
         )
-        pixels_count = int(ndvi_matrix.size)
-        is_simulated = True
 
     # 4. Generate colorized colormap heatmap preview
     thumbnail_b64 = await asyncio.to_thread(
@@ -176,44 +178,39 @@ async def get_ndvi_timeseries(payload: TimeSeriesRequest) -> TimeSeriesResponse:
 
     # If STAC returns items, extract historical data
     points: List[TimeSeriesPoint] = []
-    
+
     if items:
         # Sort chronologically (oldest to newest)
         sorted_items = sorted(
             items, key=lambda x: x.properties.get("datetime", ""), reverse=False
         )
-        base_ndvi = 0.55 if abs(payload.lat) < 40 else 0.42
-        
-        for idx, item in enumerate(sorted_items):
+
+        bbox = stac_service.get_bbox_from_point(payload.lat, payload.lon, buffer_meters=50.0)
+
+        for item in sorted_items:
             dt = item.properties.get("datetime", "")[:10]
             cloud = round(float(item.properties.get("eo:cloud_cover", 0.0)), 1)
-            # Calibrate realistic seasonal variation
-            variation = 0.08 * (idx - len(sorted_items) / 2.0) / (len(sorted_items) + 1e-3)
-            val = round(max(0.1, min(0.85, base_ndvi + variation)), 3)
-            
+            ndvi_val = 0.0
+            try:
+                band_urls = stac_service._extract_band_urls(item)
+                red_arr, nir_arr = await asyncio.to_thread(
+                    ndvi_service.read_cog_window,
+                    red_url=band_urls["red"],
+                    nir_url=band_urls["nir"],
+                    bbox=bbox,
+                )
+                _, stats = ndvi_service.calculate_ndvi(red_arr, nir_arr)
+                ndvi_val = stats.mean
+            except Exception as exc:
+                logger.warning(f"Could not sample NDVI for historical scene {item.id}: {exc}")
+                ndvi_val = 0.0
+
             points.append(
                 TimeSeriesPoint(
                     date=dt,
                     scene_id=item.id,
-                    ndvi_mean=val,
+                    ndvi_mean=ndvi_val,
                     cloud_cover=cloud,
-                )
-            )
-
-    # If no items returned or offline, provide a calibrated historical series
-    if not points:
-        from datetime import datetime, timedelta, timezone
-        now = datetime.now(timezone.utc)
-        base_ndvi = 0.52
-        for i in range(payload.limit - 1, -1, -1):
-            past_date = (now - timedelta(days=i * 20)).strftime("%Y-%m-%d")
-            seasonal_val = round(base_ndvi + 0.1 * (i % 3 - 1), 3)
-            points.append(
-                TimeSeriesPoint(
-                    date=past_date,
-                    scene_id=f"S2_HISTORIC_{past_date.replace('-', '')}",
-                    ndvi_mean=seasonal_val,
-                    cloud_cover=round(float(5 + i * 2.5), 1),
                 )
             )
 

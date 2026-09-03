@@ -6,6 +6,9 @@ a colorized colormap preview.
 """
 import base64
 import io
+import os
+import shutil
+import tempfile
 from typing import Any, Dict, List, Optional, Tuple
 
 import certifi
@@ -15,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import rasterio
+from rasterio._env import set_gdal_config
 from rasterio.warp import transform_bounds
 from rasterio.windows import from_bounds
 
@@ -25,6 +29,27 @@ from app.schemas.analysis import (
     VegetationCategory,
     VegetationInterpretation,
 )
+
+
+def _configure_gdal_ssl() -> None:
+    """
+    Configures GDAL/CURL CA bundle to an ASCII-safe temporary path.
+    On Windows, non-ASCII characters in workspace paths cause GDAL/rasterio
+    to trigger UnicodeDecodeError when reading certificates.
+    """
+    try:
+        temp_dir = os.environ.get("TEMP", tempfile.gettempdir())
+        safe_ca_path = os.path.join(temp_dir, "sathealth_cacert.pem").replace("\\", "/")
+        ca_source = certifi.where()
+        if not os.path.exists(safe_ca_path) or os.path.getsize(safe_ca_path) == 0:
+            shutil.copyfile(ca_source, safe_ca_path)
+        set_gdal_config("GDAL_CURL_CA_BUNDLE", safe_ca_path)
+        set_gdal_config("CURL_CA_BUNDLE", safe_ca_path)
+    except Exception as exc:
+        logger.warning(f"Could not setup custom GDAL CA bundle: {exc}")
+
+
+_configure_gdal_ssl()
 
 
 class NDVIService:
@@ -88,11 +113,9 @@ class NDVIService:
             "AWS_NO_SIGN_REQUEST": settings.AWS_NO_SIGN_REQUEST,
             "GDAL_DISABLE_READDIR_ON_OPEN": settings.GDAL_DISABLE_READDIR_ON_OPEN,
             "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": settings.CPL_VSIL_CURL_ALLOWED_EXTENSIONS,
-            "GDAL_HTTP_TIMEOUT": "8",
-            "GDAL_HTTP_MAX_RETRY": "1",
+            "GDAL_HTTP_TIMEOUT": "15",
+            "GDAL_HTTP_MAX_RETRY": "3",
             "CPL_CURL_VERBOSE": "NO",
-            "CURL_CA_BUNDLE": certifi.where(),
-            "GDAL_CURL_CA_BUNDLE": certifi.where(),
             "VSI_CACHE": "TRUE",
             "VSI_CACHE_SIZE": "10000000",
         }
@@ -199,46 +222,6 @@ class NDVIService:
         b64_str = base64.b64encode(img_bytes).decode("utf-8")
 
         return f"data:image/png;base64,{b64_str}"
-
-    def generate_fallback_simulation(
-        self, lat: float, lon: float, buffer_meters: float = 500.0
-    ) -> Tuple[np.ndarray, NDVIStatistics]:
-        """
-        Generates calibrated synthetic NDVI data in case external public cloud S3
-        encounters transient network timeouts or rate limits.
-        Ensures continuous SaaS uptime and seamless user experience.
-        """
-        logger.info("Generating calibrated synthetic NDVI raster for coordinates (%s, %s)", lat, lon)
-        np.random.seed(int(abs(lat * 1000 + lon * 100)) % (2**31))
-
-        # Determine baseline by latitude / agricultural zones
-        if -30.0 < lat < 45.0:
-            base_val = 0.58 + np.sin(lat) * 0.15
-        else:
-            base_val = 0.35
-
-        base_val = max(0.2, min(0.78, base_val))
-        
-        # Create 50x50 spatial grid with gradient and organic variation
-        x = np.linspace(-2, 2, 50)
-        y = np.linspace(-2, 2, 50)
-        xx, yy = np.meshgrid(x, y)
-        pattern = 0.12 * np.sin(xx * 1.5) * np.cos(yy * 1.5)
-        noise = np.random.normal(0, 0.05, (50, 50))
-        
-        simulated_matrix = np.clip(base_val + pattern + noise, -0.1, 0.92)
-
-        stats = NDVIStatistics(
-            mean=round(float(np.mean(simulated_matrix)), 4),
-            min=round(float(np.min(simulated_matrix)), 4),
-            max=round(float(np.max(simulated_matrix)), 4),
-            std=round(float(np.std(simulated_matrix)), 4),
-            median=round(float(np.median(simulated_matrix)), 4),
-            p25=round(float(np.percentile(simulated_matrix, 25)), 4),
-            p75=round(float(np.percentile(simulated_matrix, 75)), 4),
-        )
-
-        return simulated_matrix, stats
 
 
 ndvi_service = NDVIService()

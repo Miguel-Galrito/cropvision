@@ -4,31 +4,25 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navbar } from '../components/Navbar';
 import { MapWrapper } from '../components/MapWrapper';
 import { AnalysisPanel } from '../components/AnalysisPanel';
-import { PresetSelector } from '../components/PresetSelector';
 import { LoadingState } from '../components/LoadingState';
-import { PRESET_LOCATIONS } from '../lib/presets';
 import {
   AnalyzeResponse,
-  PresetLocation,
   TimeSeriesPoint,
 } from '../lib/types';
 import { analyzeVegetation, checkHealth, fetchTimeSeries } from '../lib/api';
 import {
   AlertTriangle,
+  Crosshair,
   Play,
   RotateCcw,
   Sliders,
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  // Default to Esporão Estate (Alentejo, Portugal)
-  const defaultPreset = PRESET_LOCATIONS[0];
-  const [lat, setLat] = useState<number>(defaultPreset.lat);
-  const [lon, setLon] = useState<number>(defaultPreset.lon);
-  const [zoom, setZoom] = useState<number>(defaultPreset.zoom);
-  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(
-    defaultPreset.id
-  );
+  // Default coordinates (Esporão Estate, Alentejo, Portugal)
+  const [lat, setLat] = useState<number>(38.3842);
+  const [lon, setLon] = useState<number>(-7.5519);
+  const [zoom, setZoom] = useState<number>(13);
 
   // Settings
   const [maxCloudCover, setMaxCloudCover] = useState<number>(20.0);
@@ -96,21 +90,11 @@ export default function DashboardPage() {
 
   // Initial analysis on first load
   useEffect(() => {
-    runAnalysis(defaultPreset.lat, defaultPreset.lon);
+    runAnalysis(lat, lon);
   }, []);
-
-  // Preset selection handler
-  const handleSelectPreset = (preset: PresetLocation) => {
-    setSelectedPresetId(preset.id);
-    setLat(preset.lat);
-    setLon(preset.lon);
-    setZoom(preset.zoom);
-    runAnalysis(preset.lat, preset.lon);
-  };
 
   // Map click coordinate selection handler
   const handleSelectCoordinate = (clickedLat: number, clickedLon: number) => {
-    setSelectedPresetId(null);
     setLat(clickedLat);
     setLon(clickedLon);
     runAnalysis(clickedLat, clickedLon);
@@ -133,21 +117,31 @@ export default function DashboardPage() {
         />
       </main>
 
-      {/* Floating Controls Bar (Preset Selector & Filter bar) */}
-      <div className="absolute top-20 left-4 right-4 md:left-6 md:right-auto z-20 max-w-2xl">
-        <div className="p-2.5 rounded-2xl glass-panel shadow-2xl border border-slate-700/60 flex flex-col space-y-2">
-          {/* Preset Chips */}
-          <PresetSelector
-            selectedPresetId={selectedPresetId}
-            onSelectPreset={handleSelectPreset}
-            disabled={isLoading}
-          />
+      {/* Floating Controls Bar (Dynamic Targeting & Filter Bar) */}
+      <div className="absolute top-20 left-4 right-4 md:left-6 md:right-auto z-20 max-w-xl">
+        <div className="p-3 rounded-2xl glass-panel shadow-2xl border border-slate-700/60 flex flex-col space-y-2.5">
+          {/* Dynamic Map Click Instruction Banner */}
+          <div className="flex items-center justify-between px-2 py-1.5 bg-slate-900/90 rounded-xl border border-slate-800">
+            <div className="flex items-center space-x-2.5">
+              <div className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </div>
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-100">
+                <Crosshair className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Live Map Targeting Active</span>
+              </div>
+            </div>
+            <span className="text-[11px] text-emerald-400 font-medium">
+              Click anywhere on the map to analyze
+            </span>
+          </div>
 
           {/* Quick Coordinate Manual Input & Filters */}
           <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-xs">
             <div className="flex items-center space-x-2 text-slate-300">
-              <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
-                Coordinates: {lat.toFixed(4)}°, {lon.toFixed(4)}°
+              <span className="text-[11px] text-emerald-300 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                Target: {lat.toFixed(5)}°, {lon.toFixed(5)}°
               </span>
               <button
                 onClick={() => setShowSettings(!showSettings)}

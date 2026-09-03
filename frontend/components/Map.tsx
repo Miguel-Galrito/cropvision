@@ -84,11 +84,14 @@ export const Map: React.FC<MapProps> = ({
       const marker = L.marker([lat, lon], { icon: pulseIcon }).addTo(map);
       markerRef.current = marker;
 
-      // Click listener on map to select new coordinate
+      // Click listener on map to select new coordinate anywhere on Earth
       map.on('click', (e) => {
         if (!disabled) {
           const clickedLat = Number(e.latlng.lat.toFixed(6));
           const clickedLon = Number(e.latlng.lng.toFixed(6));
+          if (markerRef.current) {
+            markerRef.current.setLatLng([clickedLat, clickedLon]);
+          }
           onSelectCoordinate(clickedLat, clickedLon);
         }
       });
@@ -113,8 +116,9 @@ export const Map: React.FC<MapProps> = ({
       const map = mapInstanceRef.current;
       if (!map) return;
 
-      map.flyTo([lat, lon], zoom, {
-        duration: 1.0,
+      const currentZoom = map.getZoom();
+      map.flyTo([lat, lon], currentZoom || zoom, {
+        duration: 0.8,
       });
 
       if (markerRef.current) {
@@ -174,7 +178,7 @@ export const Map: React.FC<MapProps> = ({
   return (
     <div className="relative w-full h-full">
       {/* Leaflet Map DOM Container */}
-      <div ref={mapContainerRef} className="w-full h-full z-0" />
+      <div ref={mapContainerRef} className="w-full h-full z-0 cursor-crosshair" />
 
       {/* Floating Map Controls */}
       <div className="absolute top-4 right-4 z-20 flex flex-col space-y-2">
