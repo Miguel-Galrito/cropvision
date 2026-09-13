@@ -1,6 +1,6 @@
 {
-  "name": "sathealth-frontend",
-  "version": "1.0.0",
+  "name": "cropvision-frontend",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

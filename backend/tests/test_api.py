@@ -1,5 +1,5 @@
 """
-Test suite for SatHealth backend.
+Test suite for CropVision backend.
 Tests health endpoint, NDVI matrix mathematical logic, input validation, and endpoints.
 """
 import base64

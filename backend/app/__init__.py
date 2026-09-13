@@ -1,1 +1,1 @@
-"""SatHealth Backend Application Package."""
+"""CropVision Backend Application Package."""

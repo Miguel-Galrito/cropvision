@@ -1,6 +1,6 @@
-# SatHealth Local Dual-Service Launcher for Windows PowerShell
+# CropVision SaaS Local Launcher for Windows PowerShell
 Write-Host "=======================================================================" -ForegroundColor Cyan
-Write-Host "         Starting SatHealth Backend and Frontend Simultaneously        " -ForegroundColor Green
+Write-Host "         Starting CropVision SaaS Backend and Frontend                 " -ForegroundColor Green
 Write-Host "=======================================================================" -ForegroundColor Cyan
 
 $RootPath = $PSScriptRoot

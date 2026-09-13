@@ -42,7 +42,7 @@ export async function checkHealth(): Promise<HealthResponse> {
     // client uses direct AWS Earth Search STAC queries.
     return {
       status: 'stac_cloud_active',
-      app_name: 'SatHealth STAC Cloud',
+      app_name: 'CropVision STAC Cloud',
       version: '1.0.0',
       environment: 'aws_stac_direct',
       stac_catalog_status: 'connected',

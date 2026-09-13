@@ -5,6 +5,9 @@ import { Navbar } from '../components/Navbar';
 import { MapWrapper } from '../components/MapWrapper';
 import { AnalysisPanel } from '../components/AnalysisPanel';
 import { LoadingState } from '../components/LoadingState';
+import { PricingModal } from '../components/PricingModal';
+import { RoiCalculatorModal } from '../components/RoiCalculatorModal';
+import { LocationSearchBar } from '../components/LocationSearchBar';
 import {
   AnalyzeResponse,
   TimeSeriesPoint,
@@ -19,6 +22,7 @@ import {
   Play,
   RotateCcw,
   Sliders,
+  Sparkles,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -45,7 +49,31 @@ export default function DashboardPage() {
   const [timeseriesData, setTimeseriesData] = useState<TimeSeriesPoint[] | null>(null);
   const [error, setError] = useState<{ message: string; detail?: any } | null>(null);
 
-  // Health check on mount
+  // Modals & Monetization State
+  const [isPricingOpen, setIsPricingOpen] = useState<boolean>(false);
+  const [pricingReason, setPricingReason] = useState<'limit_reached' | 'pdf_unlock' | 'generic'>('generic');
+  const [isRoiOpen, setIsRoiOpen] = useState<boolean>(false);
+  const [dailyUsage, setDailyUsage] = useState<number>(0);
+
+  // Helper for tracking daily free usage
+  const getTodayUsage = (): number => {
+    if (typeof window === 'undefined') return 0;
+    const todayKey = `cropvision_usage_${new Date().toISOString().slice(0, 10)}`;
+    const val = localStorage.getItem(todayKey);
+    return val ? parseInt(val, 10) : 0;
+  };
+
+  const incrementTodayUsage = (): number => {
+    if (typeof window === 'undefined') return 1;
+    const todayKey = `cropvision_usage_${new Date().toISOString().slice(0, 10)}`;
+    const current = getTodayUsage();
+    const next = current + 1;
+    localStorage.setItem(todayKey, next.toString());
+    setDailyUsage(next);
+    return next;
+  };
+
+  // Health check on mount and initialize daily usage
   useEffect(() => {
     let isMounted = true;
     checkHealth()
@@ -55,6 +83,9 @@ export default function DashboardPage() {
       .catch(() => {
         if (isMounted) setApiHealthy(false);
       });
+
+    setDailyUsage(getTodayUsage());
+
     return () => {
       isMounted = false;
     };
@@ -87,7 +118,7 @@ export default function DashboardPage() {
       } catch (err: any) {
         console.error('Analysis error:', err);
         setError({
-          message: err.message || 'Error processing satellite data.',
+          message: err.message || 'Erro ao processar dados óticos de satélite.',
           detail: err.data,
         });
       } finally {
@@ -108,7 +139,7 @@ export default function DashboardPage() {
   // Map click coordinate selection handler
   const handleSelectCoordinate = useCallback(
     (clickedLat: number, clickedLon: number) => {
-      console.log('[DashboardPage] New target coordinates selected:', clickedLat, clickedLon);
+      console.log('[CropVision] New target coordinates selected:', clickedLat, clickedLon);
       setLat(clickedLat);
       setLon(clickedLon);
       setManualLat(clickedLat.toFixed(5));
@@ -116,10 +147,35 @@ export default function DashboardPage() {
       reverseGeocode(clickedLat, clickedLon).then((geo) => {
         setLocationName(geo.formatted);
       });
+
+      // Soft Paywall check: trigger pricing modal on 4th search
+      const usage = incrementTodayUsage();
+      if (usage > 3) {
+        setPricingReason('limit_reached');
+        setIsPricingOpen(true);
+      }
+
       runAnalysis(clickedLat, clickedLon);
     },
     [runAnalysis]
   );
+
+  // Location search bar select handler
+  const handleSelectSearchResult = (selectedLat: number, selectedLon: number, name: string) => {
+    setLat(selectedLat);
+    setLon(selectedLon);
+    setManualLat(selectedLat.toFixed(5));
+    setManualLon(selectedLon.toFixed(5));
+    setLocationName(name);
+
+    const usage = incrementTodayUsage();
+    if (usage > 3) {
+      setPricingReason('limit_reached');
+      setIsPricingOpen(true);
+    }
+
+    runAnalysis(selectedLat, selectedLon);
+  };
 
   // Center tracking when map is dragged
   const handleCenterChange = useCallback(
@@ -144,12 +200,22 @@ export default function DashboardPage() {
   const displayLocation = analysisData?.location_name || locationName;
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 print:overflow-visible print:h-auto print:bg-white">
+    <div className="relative w-screen h-screen overflow-hidden bg-[#090d16] print:overflow-visible print:h-auto print:bg-white">
       {/* Top Header Navbar */}
-      <Navbar apiHealthy={apiHealthy} lat={lat} lon={lon} locationName={displayLocation} />
+      <Navbar
+        apiHealthy={apiHealthy}
+        lat={lat}
+        lon={lon}
+        locationName={displayLocation}
+        onOpenPricing={() => {
+          setPricingReason('generic');
+          setIsPricingOpen(true);
+        }}
+        onOpenRoi={() => setIsRoiOpen(true)}
+      />
 
       {/* Main Full-Screen Map */}
-      <main className="absolute inset-0 top-16 z-0 no-print">
+      <main className="absolute inset-0 top-14 sm:top-16 z-0 no-print">
         <MapWrapper
           lat={lat}
           lon={lon}
@@ -160,34 +226,32 @@ export default function DashboardPage() {
         />
       </main>
 
-      {/* Floating Controls Bar (Dynamic Targeting & Filter Bar) */}
+      {/* Floating Controls Bar (Search, Targeting & Filter Bar) */}
       <div className="absolute top-16 sm:top-20 left-3 right-3 sm:left-6 sm:right-auto z-20 max-w-xl no-print">
-        <div className="p-2.5 sm:p-3 rounded-2xl glass-panel shadow-2xl border border-slate-700/60 flex flex-col space-y-2">
-          {/* Dynamic Map Click Instruction Banner */}
-          <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-900/90 rounded-xl border border-slate-800">
-            <div className="flex items-center space-x-2">
-              <div className="flex h-2 w-2 sm:h-2.5 sm:w-2.5 relative shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-emerald-500"></span>
-              </div>
-              <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-100">
-                <Crosshair className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Targeting Active</span>
-              </div>
+        <div className="p-2.5 sm:p-3.5 rounded-3xl glass-panel shadow-2xl border border-slate-700/60 flex flex-col space-y-2.5">
+          {/* Top Row: Search Bar & Targeting Badge */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="flex-1">
+              <LocationSearchBar onSelectLocation={handleSelectSearchResult} disabled={isLoading} />
             </div>
-            <span className="text-[11px] text-emerald-400 font-medium hidden sm:inline">
-              Click anywhere on map to analyze
-            </span>
-            <span className="text-[11px] text-emerald-400 font-medium sm:hidden">
-              Tap map to analyze
-            </span>
+
+            {/* Targeting Active Beacon */}
+            <div className="flex items-center justify-between sm:justify-end space-x-2 px-3 py-1.5 bg-slate-900/90 rounded-xl border border-slate-800 shrink-0">
+              <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-slate-200">
+                <Crosshair className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Alvo Ativo</span>
+              </div>
+              <span className="text-[10px] text-emerald-400 font-mono">
+                {dailyUsage}/3 Grátis
+              </span>
+            </div>
           </div>
 
-          {/* Quick Coordinate Manual Input & Filters */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1 border-t border-slate-800/80 text-xs">
+          {/* Location details & Quick Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1.5 border-t border-slate-800/80 text-xs">
             <div className="flex items-center space-x-2 text-slate-300 min-w-0">
               <span
-                className="text-[11px] text-emerald-300 font-mono bg-slate-900 px-2 py-1 rounded-lg border border-slate-800 flex items-center space-x-1 max-w-[150px] sm:max-w-xs truncate"
+                className="text-[11px] text-emerald-300 font-mono bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-800 flex items-center space-x-1.5 max-w-[160px] sm:max-w-xs truncate"
                 title={displayLocation || `${lat.toFixed(5)}°, ${lon.toFixed(5)}°`}
               >
                 <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
@@ -195,14 +259,14 @@ export default function DashboardPage() {
               </span>
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg border text-xs transition-colors shrink-0 ${
+                className={`flex items-center space-x-1 px-2.5 py-1 rounded-xl border text-xs transition-colors shrink-0 ${
                   showSettings
                     ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
                     : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
                 }`}
               >
                 <Sliders className="w-3 h-3" />
-                <span>Filters ({maxCloudCover}%)</span>
+                <span>Filtros ({maxCloudCover}%)</span>
               </button>
             </div>
 
@@ -212,20 +276,20 @@ export default function DashboardPage() {
                   onClick={() => handleSelectCoordinate(mapCenter.lat, mapCenter.lon)}
                   disabled={isLoading}
                   className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 font-medium text-xs border border-emerald-500/30 transition-all shadow-sm"
-                  title="Place pin and analyze the center of your current view"
+                  title="Analisar centro da visualização"
                 >
                   <LocateFixed className="w-3 h-3 text-emerald-400 shrink-0" />
-                  <span>Center</span>
+                  <span>Centro</span>
                 </button>
               )}
 
               <button
-                onClick={() => runAnalysis(lat, lon)}
+                onClick={() => handleSelectCoordinate(lat, lon)}
                 disabled={isLoading}
-                className="flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md shadow-emerald-600/30 transition-all disabled:opacity-50"
+                className="flex items-center space-x-1.5 px-3.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/30 transition-all disabled:opacity-50"
               >
                 <Play className="w-3 h-3 fill-current" />
-                <span>Analyze</span>
+                <span>Analisar</span>
               </button>
             </div>
           </div>
@@ -236,7 +300,7 @@ export default function DashboardPage() {
               {/* Manual Coordinate Inputs */}
               <div>
                 <label className="text-slate-400 block mb-1 text-[11px] font-medium">
-                  Direct Coordinate Input (Lat, Lon):
+                  Inserção Direta de Coordenadas (Lat, Lon):
                 </label>
                 <div className="flex items-center space-x-2">
                   <input
@@ -245,7 +309,7 @@ export default function DashboardPage() {
                     placeholder="Latitude"
                     value={manualLat}
                     onChange={(e) => setManualLat(e.target.value)}
-                    className="w-1/2 px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 font-mono text-xs focus:outline-none focus:border-emerald-500"
+                    className="w-1/2 px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 font-mono text-xs focus:outline-none focus:border-emerald-500"
                   />
                   <input
                     type="number"
@@ -253,13 +317,13 @@ export default function DashboardPage() {
                     placeholder="Longitude"
                     value={manualLon}
                     onChange={(e) => setManualLon(e.target.value)}
-                    className="w-1/2 px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 font-mono text-xs focus:outline-none focus:border-emerald-500"
+                    className="w-1/2 px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-xl text-slate-200 font-mono text-xs focus:outline-none focus:border-emerald-500"
                   />
                   <button
                     onClick={handleApplyManualCoordinates}
-                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg transition-colors shrink-0"
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition-colors shrink-0"
                   >
-                    Go
+                    Ir
                   </button>
                 </div>
               </div>
@@ -267,7 +331,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="flex justify-between text-slate-400 mb-1">
-                    <span>Max Cloud Cover Limit:</span>
+                    <span>Limite de Nuvens:</span>
                     <span className="font-semibold text-emerald-400">{maxCloudCover}%</span>
                   </label>
                   <input
@@ -283,7 +347,7 @@ export default function DashboardPage() {
 
                 <div>
                   <label className="flex justify-between text-slate-400 mb-1">
-                    <span>Sampling Radius (Buffer):</span>
+                    <span>Raio de Amostragem (Buffer):</span>
                     <span className="font-semibold text-emerald-400">{bufferMeters}m</span>
                   </label>
                   <input
@@ -309,29 +373,29 @@ export default function DashboardPage() {
             <LoadingState lat={lat} lon={lon} />
           </div>
         ) : error ? (
-          <div className="p-5 rounded-2xl glass-panel border border-rose-900/60 shadow-2xl animate-in fade-in no-print">
+          <div className="p-5 rounded-3xl glass-panel border border-rose-900/60 shadow-2xl animate-in fade-in no-print">
             <div className="flex items-start space-x-3">
               <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 shrink-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-rose-200">
-                  Cloud Cover / Satellite Notice
+                  Aviso de Cobertura de Nuvens / Satélite
                 </h3>
                 <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
                   {error.message}
                 </p>
 
                 {error.detail?.lowest_cloud_cover && (
-                  <div className="mt-3 p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-300 space-y-1">
+                  <div className="mt-3 p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 space-y-1">
                     <div>
-                      <span className="text-slate-400">Recent pass cloud cover:</span>{' '}
+                      <span className="text-slate-400">Nuvens da passagem mais recente:</span>{' '}
                       <span className="font-bold text-rose-400">
                         {error.detail.lowest_cloud_cover.toFixed(1)}%
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400">Configured limit:</span>{' '}
+                      <span className="text-slate-400">Limite configurado:</span>{' '}
                       <span className="font-semibold text-slate-200">{maxCloudCover}%</span>
                     </div>
                     {error.detail.recommendation && (
@@ -350,17 +414,17 @@ export default function DashboardPage() {
                         setMaxCloudCover(newThreshold);
                         runAnalysis(lat, lon, newThreshold);
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-colors"
                     >
-                      Adjust Limit to {Math.ceil(error.detail.lowest_cloud_cover + 5)}% & Retry
+                      Ajustar Limite para {Math.ceil(error.detail.lowest_cloud_cover + 5)}% & Repetir
                     </button>
                   )}
                   <button
                     onClick={() => runAnalysis(lat, lon)}
-                    className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium border border-slate-800 transition-colors"
+                    className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium border border-slate-800 transition-colors"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Try Again</span>
+                    <span>Repetir</span>
                   </button>
                 </div>
               </div>
@@ -371,9 +435,26 @@ export default function DashboardPage() {
             data={analysisData}
             timeseries={timeseriesData}
             onClose={() => setAnalysisData(null)}
+            onRequestPdfProUpgrade={() => {
+              setPricingReason('pdf_unlock');
+              setIsPricingOpen(true);
+            }}
           />
         ) : null}
       </div>
+
+      {/* Pricing & Monetization Modal (Whop) */}
+      <PricingModal
+        isOpen={isPricingOpen}
+        onClose={() => setIsPricingOpen(false)}
+        reason={pricingReason}
+      />
+
+      {/* Interactive Agricultural ROI Calculator Modal */}
+      <RoiCalculatorModal
+        isOpen={isRoiOpen}
+        onClose={() => setIsRoiOpen(false)}
+      />
     </div>
   );
 }

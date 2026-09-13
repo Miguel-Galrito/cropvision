@@ -8,9 +8,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "SatHealth API"
-    VERSION: str = "1.0.0"
-    DESCRIPTION: str = "B2B Micro-SaaS for automated vegetation and crop health monitoring via Copernicus Sentinel-2 STAC"
+    PROJECT_NAME: str = "CropVision API"
+    VERSION: str = "2.0.0"
+    DESCRIPTION: str = "Agricultural Earth Observation & Satellite NDVI Intelligence via Copernicus Sentinel-2 STAC"
     API_V1_STR: str = "/api/v1"
     
     # Environment & Server

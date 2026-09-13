@@ -1,7 +1,7 @@
 /**
- * Geospatial Reverse Geocoding Utility.
+ * Geospatial Geocoding & Reverse Geocoding Utility.
  * Resolves (latitude, longitude) coordinates to city, municipality, administrative area, and country.
- * Supports Google Maps Platform Geocoding REST API with graceful fallback to OpenStreetMap Nominatim.
+ * Supports worldwide location search via OpenStreetMap Nominatim with caching.
  */
 
 export interface GeocodedLocation {
@@ -11,8 +11,16 @@ export interface GeocodedLocation {
   formatted: string;
 }
 
+export interface SearchResultLocation {
+  name: string;
+  lat: number;
+  lon: number;
+  type?: string;
+}
+
 // Coordinate-bucket cache to avoid redundant network lookups
 const geocodeCache = new Map<string, GeocodedLocation>();
+const searchCache = new Map<string, SearchResultLocation[]>();
 
 export async function reverseGeocode(
   lat: number,
@@ -81,7 +89,7 @@ export async function reverseGeocode(
         headers: {
           'Accept': 'application/json',
           'Accept-Language': 'en-US,en;q=0.9',
-          'User-Agent': 'SatHealth-MicroSaaS/1.0',
+          'User-Agent': 'CropVision-SaaS/1.0',
         },
         signal: controller.signal,
       }
@@ -132,4 +140,51 @@ export async function reverseGeocode(
   };
 
   return defaultLocation;
+}
+
+/**
+ * Forward Geocoding: Searches worldwide cities, towns, and regions.
+ */
+export async function searchLocations(query: string): Promise<SearchResultLocation[]> {
+  const clean = query.trim().toLowerCase();
+  if (!clean || clean.length < 2) return [];
+
+  if (searchCache.has(clean)) {
+    return searchCache.get(clean)!;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(clean)}&format=json&limit=5&accept-language=en`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'User-Agent': 'CropVision-SaaS/1.0',
+        },
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      const results: SearchResultLocation[] = data.map((item: any) => ({
+        name: item.display_name,
+        lat: parseFloat(item.lat),
+        lon: parseFloat(item.lon),
+        type: item.type || item.class,
+      }));
+
+      searchCache.set(clean, results);
+      return results;
+    }
+  } catch (err) {
+    console.warn('[Geocoding] Nominatim search error:', err);
+  }
+
+  return [];
 }

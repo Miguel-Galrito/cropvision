@@ -1,6 +1,6 @@
 /**
- * TypeScript definitions for SatHealth EO SaaS.
- * Exactly matches backend Pydantic schemas.
+ * TypeScript definitions for CropVision SaaS.
+ * Agricultural Earth Observation & Satellite NDVI Intelligence.
  */
 
 export type VegetationCategory =

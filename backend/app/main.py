@@ -1,5 +1,5 @@
 """
-SatHealth API - Earth Observation Micro-SaaS.
+CropVision API - Earth Observation SaaS.
 FastAPI main application entrypoint with strict CORS, OpenAPI docs, and global error handlers.
 """
 from contextlib import asynccontextmanager
