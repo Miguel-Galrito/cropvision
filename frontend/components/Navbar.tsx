@@ -113,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* GitHub Repo Link */}
         <a
-          href="https://github.com/Miguel-Galrito/sat-health-api"
+          href="https://github.com/Miguel-Galrito/cropvision-saas"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center space-x-1 p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-medium rounded-xl text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-colors"

@@ -18,7 +18,7 @@
 > [!TIP]
 > ### 🌍 Aplicação Interativa em Produção
 > Clique em qualquer parcela agrícola, vinha ou olival no globo para analisar a telemetria do dossel e descarregar relatórios executivos:
-> 👉 **[https://miguel-galrito.github.io/sat-health-api/](https://miguel-galrito.github.io/sat-health-api/)**
+> 👉 **[https://miguel-galrito.github.io/cropvision-saas/](https://miguel-galrito.github.io/cropvision-saas/)**
 
 [Planos & Monetização](#-planos-comerciais--monetização-whop) •
 [Funcionalidades](#-funcionalidades-chave) •
