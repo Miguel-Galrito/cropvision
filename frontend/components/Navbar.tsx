@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ExternalLink, MapPin, Calculator, Sparkles } from 'lucide-react';
+import { ExternalLink, MapPin, Calculator, Sparkles, UploadCloud } from 'lucide-react';
 
 interface NavbarProps {
   apiHealthy: boolean | null;
@@ -11,6 +11,7 @@ interface NavbarProps {
   onRefresh?: () => void;
   onOpenPricing?: () => void;
   onOpenRoi?: () => void;
+  onOpenParcelUploader?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,6 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   locationName,
   onOpenPricing,
   onOpenRoi,
+  onOpenParcelUploader,
 }) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 h-14 sm:h-16 border-b border-slate-800/80 bg-[#090d16]/90 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between no-print">
@@ -78,6 +80,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Right Action Buttons & Monetization */}
       <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
+        {/* Upload Parcel GeoJSON Button */}
+        {onOpenParcelUploader && (
+          <button
+            onClick={onOpenParcelUploader}
+            className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-300 hover:text-white border border-emerald-500/30 hover:border-emerald-500/60 text-xs font-semibold transition-all shadow-sm"
+            title="Importar polígono de parcela em GeoJSON ou KML"
+          >
+            <UploadCloud className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="hidden sm:inline">Importar Parcela</span>
+            <span className="sm:hidden">SIG</span>
+          </button>
+        )}
+
         {/* ROI Calculator Button */}
         {onOpenRoi && (
           <button

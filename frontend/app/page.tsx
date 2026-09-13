@@ -8,9 +8,14 @@ import { LoadingState } from '../components/LoadingState';
 import { PricingModal } from '../components/PricingModal';
 import { RoiCalculatorModal } from '../components/RoiCalculatorModal';
 import { LocationSearchBar } from '../components/LocationSearchBar';
+import { ParcelUploader } from '../components/ParcelUploader';
+import { PresetSelector } from '../components/PresetSelector';
+import { PRESET_LOCATIONS } from '../lib/presets';
+import { generateTractorPrescriptionMap } from '../lib/prescription';
 import {
   AnalyzeResponse,
   TimeSeriesPoint,
+  PresetLocation,
 } from '../lib/types';
 import { analyzeVegetation, checkHealth, fetchTimeSeries } from '../lib/api';
 import { reverseGeocode } from '../lib/geocoding';
@@ -23,15 +28,21 @@ import {
   RotateCcw,
   Sliders,
   Sparkles,
+  UploadCloud,
 } from 'lucide-react';
 
 export default function DashboardPage() {
   // Default coordinates (Esporão Estate, Alentejo, Portugal)
   const [lat, setLat] = useState<number>(38.3842);
   const [lon, setLon] = useState<number>(-7.5519);
-  const [zoom, setZoom] = useState<number>(13);
+  const [zoom, setZoom] = useState<number>(14);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lon: number } | null>(null);
-  const [locationName, setLocationName] = useState<string | null>('Reguengos de Monsaraz, Évora, Portugal');
+  const [locationName, setLocationName] = useState<string | null>('Herdade do Esporão, Alentejo, Portugal');
+  const [currentPolygon, setCurrentPolygon] = useState<[number, number][] | null>(
+    PRESET_LOCATIONS[0].polygon as [number, number][] || null
+  );
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>('esporao-alentejo');
+  const [isParcelUploaderOpen, setIsParcelUploaderOpen] = useState<boolean>(false);
 
   // Manual input state
   const [manualLat, setManualLat] = useState<string>('38.3842');
@@ -91,9 +102,14 @@ export default function DashboardPage() {
     };
   }, []);
 
-  // Analysis executor
+  // Analysis executor with dynamic parcel area support
   const runAnalysis = useCallback(
-    async (targetLat: number, targetLon: number, cloudThreshold = maxCloudCover) => {
+    async (
+      targetLat: number,
+      targetLon: number,
+      cloudThreshold = maxCloudCover,
+      customHectares?: number
+    ) => {
       setIsLoading(true);
       setError(null);
 
@@ -105,6 +121,17 @@ export default function DashboardPage() {
           max_cloud_cover: cloudThreshold,
           buffer_meters: bufferMeters,
         });
+
+        // If custom parcel area is provided, recalibrate tractor prescription map
+        if (customHectares && data.prescription_map) {
+          data.prescription_map = generateTractorPrescriptionMap(
+            data.location_name || 'Parcela Agrícola',
+            data.ndvi.mean,
+            customHectares
+          );
+          data.polygon_area_hectares = customHectares;
+        }
+
         setAnalysisData(data);
 
         // 2. Fetch historical time series in parallel
@@ -112,7 +139,6 @@ export default function DashboardPage() {
           const ts = await fetchTimeSeries(targetLat, targetLon, Math.max(35, cloudThreshold));
           setTimeseriesData(ts.series);
         } catch {
-          // Time series failure is non-fatal
           setTimeseriesData(null);
         }
       } catch (err: any) {
@@ -133,7 +159,7 @@ export default function DashboardPage() {
     reverseGeocode(lat, lon).then((geo) => {
       setLocationName(geo.formatted);
     });
-    runAnalysis(lat, lon);
+    runAnalysis(lat, lon, maxCloudCover, PRESET_LOCATIONS[0].hectares);
   }, []);
 
   // Map click coordinate selection handler
@@ -142,13 +168,14 @@ export default function DashboardPage() {
       console.log('[CropVision] New target coordinates selected:', clickedLat, clickedLon);
       setLat(clickedLat);
       setLon(clickedLon);
+      setSelectedPresetId(null);
+      setCurrentPolygon(null);
       setManualLat(clickedLat.toFixed(5));
       setManualLon(clickedLon.toFixed(5));
       reverseGeocode(clickedLat, clickedLon).then((geo) => {
         setLocationName(geo.formatted);
       });
 
-      // Soft Paywall check: trigger pricing modal on 4th search
       const usage = incrementTodayUsage();
       if (usage > 3) {
         setPricingReason('limit_reached');
@@ -164,6 +191,8 @@ export default function DashboardPage() {
   const handleSelectSearchResult = (selectedLat: number, selectedLon: number, name: string) => {
     setLat(selectedLat);
     setLon(selectedLon);
+    setSelectedPresetId(null);
+    setCurrentPolygon(null);
     setManualLat(selectedLat.toFixed(5));
     setManualLon(selectedLon.toFixed(5));
     setLocationName(name);
@@ -175,6 +204,43 @@ export default function DashboardPage() {
     }
 
     runAnalysis(selectedLat, selectedLon);
+  };
+
+  // Preset location select handler
+  const handleSelectPreset = (preset: PresetLocation) => {
+    setSelectedPresetId(preset.id);
+    setLat(preset.lat);
+    setLon(preset.lon);
+    setZoom(preset.zoom);
+    setManualLat(preset.lat.toFixed(5));
+    setManualLon(preset.lon.toFixed(5));
+    setLocationName(`${preset.name} (${preset.region})`);
+
+    if (preset.polygon) {
+      setCurrentPolygon(preset.polygon as [number, number][]);
+    } else {
+      setCurrentPolygon(null);
+    }
+
+    runAnalysis(preset.lat, preset.lon, maxCloudCover, preset.hectares || 28.5);
+  };
+
+  // Custom GeoJSON parcel loaded handler
+  const handleCustomParcelLoaded = (
+    polygon: [number, number][],
+    centerLat: number,
+    centerLon: number,
+    areaHectares: number,
+    name: string
+  ) => {
+    setSelectedPresetId(null);
+    setCurrentPolygon(polygon);
+    setLat(centerLat);
+    setLon(centerLon);
+    setManualLat(centerLat.toFixed(5));
+    setManualLon(centerLon.toFixed(5));
+    setLocationName(`${name} (${areaHectares} ha)`);
+    runAnalysis(centerLat, centerLon, maxCloudCover, areaHectares);
   };
 
   // Center tracking when map is dragged
@@ -212,6 +278,7 @@ export default function DashboardPage() {
           setIsPricingOpen(true);
         }}
         onOpenRoi={() => setIsRoiOpen(true)}
+        onOpenParcelUploader={() => setIsParcelUploaderOpen(true)}
       />
 
       {/* Main Full-Screen Map */}
@@ -221,19 +288,29 @@ export default function DashboardPage() {
           lon={lon}
           zoom={zoom}
           bbox={analysisData?.bbox}
+          polygon={currentPolygon}
           onSelectCoordinate={handleSelectCoordinate}
           onCenterChange={handleCenterChange}
         />
       </main>
 
-      {/* Floating Controls Bar (Search, Targeting & Filter Bar) */}
-      <div className="absolute top-16 sm:top-20 left-3 right-3 sm:left-6 sm:right-auto z-20 max-w-xl no-print">
+      {/* Floating Controls Bar (Search, Presets, Targeting & Filter Bar) */}
+      <div className="absolute top-16 sm:top-20 left-3 right-3 sm:left-6 sm:right-auto z-20 max-w-xl no-print space-y-2">
         <div className="p-2.5 sm:p-3.5 rounded-3xl glass-panel shadow-2xl border border-slate-700/60 flex flex-col space-y-2.5">
-          {/* Top Row: Search Bar & Targeting Badge */}
+          {/* Top Row: Search Bar, Import Parcel & Targeting Beacon */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <div className="flex-1">
               <LocationSearchBar onSelectLocation={handleSelectSearchResult} disabled={isLoading} />
             </div>
+
+            <button
+              onClick={() => setIsParcelUploaderOpen(true)}
+              className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-emerald-300 border border-emerald-500/30 hover:border-emerald-500/60 text-xs font-semibold shrink-0 transition-all"
+              title="Carregar ficheiro GeoJSON da parcela"
+            >
+              <UploadCloud className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Polígono SIG</span>
+            </button>
 
             {/* Targeting Active Beacon */}
             <div className="flex items-center justify-between sm:justify-end space-x-2 px-3 py-1.5 bg-slate-900/90 rounded-xl border border-slate-800 shrink-0">
@@ -245,6 +322,15 @@ export default function DashboardPage() {
                 {dailyUsage}/3 Grátis
               </span>
             </div>
+          </div>
+
+          {/* Preset Selector Carousel */}
+          <div className="pt-1 border-t border-slate-800/60">
+            <PresetSelector
+              selectedPresetId={selectedPresetId}
+              onSelectPreset={handleSelectPreset}
+              disabled={isLoading}
+            />
           </div>
 
           {/* Location details & Quick Action Buttons */}
@@ -284,7 +370,7 @@ export default function DashboardPage() {
               )}
 
               <button
-                onClick={() => handleSelectCoordinate(lat, lon)}
+                onClick={() => runAnalysis(lat, lon)}
                 disabled={isLoading}
                 className="flex items-center space-x-1.5 px-3.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/30 transition-all disabled:opacity-50"
               >
@@ -442,6 +528,13 @@ export default function DashboardPage() {
           />
         ) : null}
       </div>
+
+      {/* Parcel Uploader Modal (GeoJSON / KML / Demo Plots) */}
+      <ParcelUploader
+        isOpen={isParcelUploaderOpen}
+        onClose={() => setIsParcelUploaderOpen(false)}
+        onSelectParcel={handleCustomParcelLoaded}
+      />
 
       {/* Pricing & Monetization Modal (Whop) */}
       <PricingModal

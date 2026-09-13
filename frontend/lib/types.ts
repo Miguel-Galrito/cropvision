@@ -1,6 +1,6 @@
 /**
  * TypeScript definitions for CropVision SaaS.
- * Agricultural Earth Observation & Satellite NDVI Intelligence.
+ * Agricultural Earth Observation & Satellite NDVI/SAR Intelligence.
  */
 
 export type VegetationCategory =
@@ -28,6 +28,40 @@ export interface NDVIStatistics {
   p75: number;
 }
 
+export interface SarRadarTelemetry {
+  satellite: string; // Sentinel-1A / Sentinel-1C
+  mode: string; // IW (Interferometric Wide Swath)
+  polarization: string; // VV + VH dual polarization
+  backscatter_vv_db: number; // e.g. -11.4 dB
+  backscatter_vh_db: number; // e.g. -18.2 dB
+  cross_ratio_vh_vv: number; // Biomass index
+  soil_moisture_estimate_pct: number; // volumetric soil moisture 0 - 100%
+  penetration_status: 'CLOUDS_PENETRATED' | 'ALL_WEATHER_VERIFIED';
+  radar_colormap_url?: string;
+}
+
+export interface PrescriptionZone {
+  zone_id: string;
+  name: string;
+  target_n_rate_kg_ha: number;
+  recommendation: string;
+  percentage_of_parcel: number;
+  estimated_hectares: number;
+  color_hex: string;
+}
+
+export interface TractorPrescriptionMap {
+  field_name: string;
+  total_area_hectares: number;
+  fertilizer_savings_eur: number;
+  baseline_flat_n_kg: number;
+  optimized_variable_n_kg: number;
+  nitrogen_saved_kg: number;
+  co2_equivalent_mitigated_kg: number;
+  isobus_export_ready: boolean;
+  zones: PrescriptionZone[];
+}
+
 export interface AnalyzeRequest {
   lat: number;
   lon: number;
@@ -35,6 +69,8 @@ export interface AnalyzeRequest {
   buffer_meters?: number;
   date_from?: string;
   date_to?: string;
+  polygon_geojson?: any;
+  sensor_mode?: 'sentinel_2_optical' | 'sentinel_1_sar' | 'dual_fusion';
 }
 
 export interface AnalyzeResponse {
@@ -58,6 +94,10 @@ export interface AnalyzeResponse {
   location_name?: string;
   is_simulated: boolean;
   processing_time_ms: number;
+  // Deep-Tech Spin-Off Capabilities:
+  sar_radar?: SarRadarTelemetry;
+  prescription_map?: TractorPrescriptionMap;
+  polygon_area_hectares?: number;
 }
 
 export interface TimeSeriesPoint {
@@ -65,6 +105,7 @@ export interface TimeSeriesPoint {
   scene_id: string;
   ndvi_mean: number;
   cloud_cover: number;
+  sar_moisture_pct?: number;
 }
 
 export interface TimeSeriesResponse {
@@ -95,4 +136,6 @@ export interface PresetLocation {
   lon: number;
   zoom: number;
   description: string;
+  hectares?: number;
+  polygon?: number[][];
 }

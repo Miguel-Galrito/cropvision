@@ -9,6 +9,7 @@ interface MapProps {
   lon: number;
   zoom?: number;
   bbox?: [number, number, number, number] | null;
+  polygon?: [number, number][] | null;
   onSelectCoordinate: (lat: number, lon: number) => void;
   onCenterChange?: (centerLat: number, centerLon: number) => void;
   disabled?: boolean;
@@ -19,6 +20,7 @@ export const Map: React.FC<MapProps> = ({
   lon,
   zoom = 13,
   bbox,
+  polygon,
   onSelectCoordinate,
   onCenterChange,
 }) => {
@@ -26,6 +28,7 @@ export const Map: React.FC<MapProps> = ({
   const mapInstanceRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
   const bboxRectRef = useRef<Rectangle | null>(null);
+  const polygonLayerRef = useRef<any>(null);
   const [activeLayer, setActiveLayer] = useState<'streets' | 'satellite'>('streets');
   const baseLayersRef = useRef<{ streets: TileLayer | null; satellite: TileLayer | null }>({
     streets: null,
@@ -183,6 +186,38 @@ export const Map: React.FC<MapProps> = ({
       }
     });
   }, [bbox]);
+
+  // Update Field Parcel Polygon Layer
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    import('leaflet').then((L) => {
+      if (polygonLayerRef.current) {
+        map.removeLayer(polygonLayerRef.current);
+        polygonLayerRef.current = null;
+      }
+
+      if (polygon && polygon.length >= 3) {
+        const poly = L.polygon(polygon, {
+          color: '#10b981',
+          weight: 3,
+          fillColor: '#10b981',
+          fillOpacity: 0.2,
+          dashArray: '5, 5',
+          interactive: false,
+        }).addTo(map);
+
+        polygonLayerRef.current = poly;
+
+        try {
+          map.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 16 });
+        } catch {
+          // ignore
+        }
+      }
+    });
+  }, [polygon]);
 
   // Toggle Basemap (Streets vs Satellite)
   const toggleBasemap = () => {

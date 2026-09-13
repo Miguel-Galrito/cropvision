@@ -9,6 +9,7 @@ interface MapWrapperProps {
   lon: number;
   zoom?: number;
   bbox?: [number, number, number, number] | null;
+  polygon?: [number, number][] | null;
   onSelectCoordinate: (lat: number, lon: number) => void;
   onCenterChange?: (centerLat: number, centerLon: number) => void;
   disabled?: boolean;
