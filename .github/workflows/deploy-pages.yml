@@ -42,7 +42,7 @@ jobs:
         working-directory: frontend
         env:
           GITHUB_ACTIONS: "true"
-          NEXT_PUBLIC_BASE_PATH: "/sat-health-api"
+          NEXT_PUBLIC_BASE_PATH: "/cropvision-saas"
         run: npm run build
 
       - name: Upload Pages artifact
