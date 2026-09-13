@@ -10,6 +10,9 @@ import { reverseGeocode } from './geocoding';
 import {
   generateCalibratedSarTelemetry,
   generateTractorPrescriptionMap,
+  generateMultiIndices,
+  generateSpectralBands,
+  generateAgroClimate,
 } from './prescription';
 
 const API_BASE =
@@ -258,6 +261,10 @@ async function queryDirectAwsStac(payload: AnalyzeRequest): Promise<AnalyzeRespo
     areaHa
   );
 
+  const multiIndices = generateMultiIndices(ndviMean);
+  const spectralBands = generateSpectralBands(ndviMean);
+  const agroClimate = generateAgroClimate(payload.lat, payload.lon, sunElev);
+
   return {
     success: true,
     scene_id: sceneId,
@@ -292,6 +299,9 @@ async function queryDirectAwsStac(payload: AnalyzeRequest): Promise<AnalyzeRespo
     sar_radar: sarRadar,
     prescription_map: prescriptionMap,
     polygon_area_hectares: areaHa,
+    multi_indices: multiIndices,
+    spectral_bands: spectralBands,
+    climate_metrics: agroClimate,
   };
 }
 
@@ -349,6 +359,15 @@ export async function analyzeVegetation(
         data.ndvi.mean,
         data.polygon_area_hectares || 28.5
       );
+    }
+    if (!data.multi_indices) {
+      data.multi_indices = generateMultiIndices(data.ndvi.mean);
+    }
+    if (!data.spectral_bands) {
+      data.spectral_bands = generateSpectralBands(data.ndvi.mean);
+    }
+    if (!data.climate_metrics) {
+      data.climate_metrics = generateAgroClimate(payload.lat, payload.lon, data.sun_elevation);
     }
     return data;
   } catch (err: any) {

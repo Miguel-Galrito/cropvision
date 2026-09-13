@@ -2,18 +2,24 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://miguel-galrito.github.io/sat-health-api'),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://cropvision-saas-mer9.vercel.app'
+  ),
   title: 'CropVision SaaS — Agricultural Earth Observation & Satellite NDVI Intelligence',
   description:
-    'B2B Earth Observation Micro-SaaS for automated NDVI calculation, crop canopy vigor diagnosis, and precision agriculture monitoring via Copernicus Sentinel-2 open STAC.',
+    'B2B Earth Observation Deep-Tech SaaS for automated NDVI, Sentinel-1 SAR Radar moisture calculation, and ISO-BUS variable rate prescription maps.',
   icons: {
-    icon: '/cropvision_icon.jpg',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/cropvision_icon.jpg', type: 'image/jpeg' },
+    ],
+    shortcut: '/icon.svg',
     apple: '/cropvision_icon.jpg',
   },
   openGraph: {
-    title: 'CropVision SaaS — Agricultural Earth Observation & Satellite NDVI Intelligence',
+    title: 'CropVision SaaS — Agricultural Earth Observation & Satellite Intelligence',
     description:
-      'B2B Earth Observation Micro-SaaS for automated NDVI calculation, crop canopy vigor diagnosis, and precision agriculture monitoring via Copernicus Sentinel-2 open STAC.',
+      'Copernicus Sentinel-2 & Sentinel-1 SAR Radar telemetry and ISO-BUS tractor prescription maps.',
     type: 'website',
     images: [
       {
@@ -26,8 +32,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CropVision SaaS — Satellite NDVI Intelligence',
-    description: 'Precision Agriculture Earth Observation powered by Copernicus Sentinel-2 STAC.',
+    title: 'CropVision SaaS — Satellite NDVI & SAR Radar Intelligence',
+    description: 'Precision Agriculture Earth Observation powered by Copernicus Sentinel STAC.',
     images: ['/cropvision_banner.jpg'],
   },
 };
@@ -40,6 +46,8 @@ export default function RootLayout({
   return (
     <html lang="pt" className="dark">
       <head>
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="alternate icon" href="/favicon.ico" />
         <link
           rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"

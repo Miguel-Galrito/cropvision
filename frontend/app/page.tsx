@@ -10,6 +10,7 @@ import { RoiCalculatorModal } from '../components/RoiCalculatorModal';
 import { LocationSearchBar } from '../components/LocationSearchBar';
 import { ParcelUploader } from '../components/ParcelUploader';
 import { PresetSelector } from '../components/PresetSelector';
+import { BannerModal } from '../components/BannerModal';
 import { PRESET_LOCATIONS } from '../lib/presets';
 import { generateTractorPrescriptionMap } from '../lib/prescription';
 import {
@@ -29,6 +30,7 @@ import {
   Sliders,
   Sparkles,
   UploadCloud,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -43,6 +45,7 @@ export default function DashboardPage() {
   );
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>('esporao-alentejo');
   const [isParcelUploaderOpen, setIsParcelUploaderOpen] = useState<boolean>(false);
+  const [isBannerModalOpen, setIsBannerModalOpen] = useState<boolean>(false);
 
   // Manual input state
   const [manualLat, setManualLat] = useState<string>('38.3842');
@@ -279,6 +282,7 @@ export default function DashboardPage() {
         }}
         onOpenRoi={() => setIsRoiOpen(true)}
         onOpenParcelUploader={() => setIsParcelUploaderOpen(true)}
+        onOpenBanners={() => setIsBannerModalOpen(true)}
       />
 
       {/* Main Full-Screen Map */}
@@ -353,6 +357,15 @@ export default function DashboardPage() {
               >
                 <Sliders className="w-3 h-3" />
                 <span>Filtros ({maxCloudCover}%)</span>
+              </button>
+
+              <button
+                onClick={() => setIsBannerModalOpen(true)}
+                className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/30 text-xs transition-colors shrink-0"
+                title="Ver e descarregar banners e logótipos oficiais em 4K"
+              >
+                <ImageIcon className="w-3 h-3 text-sky-400" />
+                <span className="hidden sm:inline">Banners 4K</span>
               </button>
             </div>
 
@@ -547,6 +560,12 @@ export default function DashboardPage() {
       <RoiCalculatorModal
         isOpen={isRoiOpen}
         onClose={() => setIsRoiOpen(false)}
+      />
+
+      {/* Official Aerospace Banners & Logo Showcase Modal */}
+      <BannerModal
+        isOpen={isBannerModalOpen}
+        onClose={() => setIsBannerModalOpen(false)}
       />
     </div>
   );

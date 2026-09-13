@@ -28,6 +28,31 @@ export interface NDVIStatistics {
   p75: number;
 }
 
+export interface MultiIndexMetrics {
+  ndvi: number; // Normalized Difference Vegetation Index: canopy vigor
+  ndre: number; // Normalized Difference Red Edge: chlorophyll & nitrogen uptake
+  ndwi: number; // Normalized Difference Water Index: canopy hydration & water stress
+  evi: number;  // Enhanced Vegetation Index: high-biomass structural index
+  msavi: number; // Modified Soil Adjusted Vegetation Index: minimizes soil background
+}
+
+export interface SpectralBand {
+  band: string;
+  name: string;
+  wavelength_nm: number;
+  reflectance: number;
+  resolution_m: number;
+  purpose: string;
+}
+
+export interface AgroClimateMetrics {
+  evapotranspiration_mm_day: number; // Daily reference ET0
+  growing_degree_days: number;       // GDD base 10°C
+  solar_radiation_w_m2: number;      // Solar irradiance W/m²
+  next_satellite_overpass_hours: number; // Countdown to next pass
+  cap_nitrates_compliance_pct: number; // EU Nitrates Directive compliance score
+}
+
 export interface SarRadarTelemetry {
   satellite: string; // Sentinel-1A / Sentinel-1C
   mode: string; // IW (Interferometric Wide Swath)
@@ -59,6 +84,8 @@ export interface TractorPrescriptionMap {
   nitrogen_saved_kg: number;
   co2_equivalent_mitigated_kg: number;
   isobus_export_ready: boolean;
+  selected_fertilizer_name?: string;
+  fertilizer_price_eur_ton?: number;
   zones: PrescriptionZone[];
 }
 
@@ -94,10 +121,13 @@ export interface AnalyzeResponse {
   location_name?: string;
   is_simulated: boolean;
   processing_time_ms: number;
-  // Deep-Tech Spin-Off Capabilities:
+  // Deep-Tech Enterprise Spin-Off Capabilities:
   sar_radar?: SarRadarTelemetry;
   prescription_map?: TractorPrescriptionMap;
   polygon_area_hectares?: number;
+  multi_indices?: MultiIndexMetrics;
+  spectral_bands?: SpectralBand[];
+  climate_metrics?: AgroClimateMetrics;
 }
 
 export interface TimeSeriesPoint {
