@@ -1,8 +1,26 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import type { Map as LeafletMap, Marker, Rectangle, TileLayer } from 'leaflet';
-import { Layers, ZoomIn, ZoomOut } from 'lucide-react';
+import type { Map as LeafletMap, Marker, Rectangle, TileLayer, Polygon as LeafletPolygon } from 'leaflet';
+import {
+  Layers,
+  ZoomIn,
+  ZoomOut,
+  MapPin,
+  Crosshair,
+  Eye,
+  Radio,
+  Sliders,
+  AlertTriangle,
+  Bug,
+  Droplets,
+  Sprout,
+  X,
+} from 'lucide-react';
+import { ScoutingRecord } from '../lib/scouting/scoutingStore';
+
+export type BasemapMode = 'satellite' | 'hybrid' | 'streets';
+export type VisualOverlayMode = 'rgb' | 'ndvi' | 'sar' | 'ndre';
 
 interface MapProps {
   lat: number;
@@ -10,7 +28,12 @@ interface MapProps {
   zoom?: number;
   bbox?: [number, number, number, number] | null;
   polygon?: [number, number][] | null;
+  scoutingRecords?: ScoutingRecord[];
+  isScoutingModeActive?: boolean;
+  onToggleScoutingMode?: () => void;
   onSelectCoordinate: (lat: number, lon: number) => void;
+  onScoutCoordinateClick?: (lat: number, lon: number) => void;
+  onDeleteScoutingRecord?: (id: string) => void;
   onCenterChange?: (centerLat: number, centerLon: number) => void;
   disabled?: boolean;
 }
@@ -18,109 +41,138 @@ interface MapProps {
 export const Map: React.FC<MapProps> = ({
   lat,
   lon,
-  zoom = 13,
+  zoom = 14,
   bbox,
   polygon,
+  scoutingRecords = [],
+  isScoutingModeActive = false,
+  onToggleScoutingMode,
   onSelectCoordinate,
+  onScoutCoordinateClick,
+  onDeleteScoutingRecord,
   onCenterChange,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
   const bboxRectRef = useRef<Rectangle | null>(null);
-  const polygonLayerRef = useRef<any>(null);
-  const [activeLayer, setActiveLayer] = useState<'streets' | 'satellite'>('streets');
-  const baseLayersRef = useRef<{ streets: TileLayer | null; satellite: TileLayer | null }>({
-    streets: null,
+  const polygonLayerRef = useRef<LeafletPolygon | null>(null);
+  const scoutingMarkersRef = useRef<Marker[]>([]);
+
+  // Basemap and Visual Layer State
+  const [basemap, setBasemap] = useState<BasemapMode>('satellite');
+  const [visualMode, setVisualMode] = useState<VisualOverlayMode>('ndvi');
+  const [ndviOpacity, setNdviOpacity] = useState<number>(65); // 0 to 100%
+
+  const tileLayersRef = useRef<{
+    satellite: TileLayer | null;
+    hybridLabels: TileLayer | null;
+    streets: TileLayer | null;
+  }>({
     satellite: null,
+    hybridLabels: null,
+    streets: null,
   });
 
-  // Keep references to callback functions to avoid stale closures in Leaflet events
+  // Callbacks refs to avoid stale closures in Leaflet events
   const onSelectCoordinateRef = useRef(onSelectCoordinate);
   onSelectCoordinateRef.current = onSelectCoordinate;
+
+  const onScoutCoordinateClickRef = useRef(onScoutCoordinateClick);
+  onScoutCoordinateClickRef.current = onScoutCoordinateClick;
+
+  const isScoutingModeActiveRef = useRef(isScoutingModeActive);
+  isScoutingModeActiveRef.current = isScoutingModeActive;
 
   const onCenterChangeRef = useRef(onCenterChange);
   onCenterChangeRef.current = onCenterChange;
 
+  // Initialize Map
   useEffect(() => {
-    // Dynamically import Leaflet only on client
     if (typeof window === 'undefined' || !mapContainerRef.current) return;
-
     let isMounted = true;
 
     import('leaflet').then((L) => {
       if (!isMounted || mapInstanceRef.current || !mapContainerRef.current) return;
 
-      // Initialize map instance
       const map = L.map(mapContainerRef.current, {
         center: [lat, lon],
         zoom: zoom,
         zoomControl: false,
       });
 
-      // Standard OpenStreetMap Tile Layer (Free, no API key required, no watermark)
-      const streetsLayer = L.tileLayer(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
-          maxZoom: 19,
-          subdomains: ['a', 'b', 'c'],
-        }
-      ).addTo(map);
-
-      // Esri World Imagery (High-Resolution Satellite Layer)
+      // 1. Esri World Imagery (High-Resolution Satellite Layer) - DEFAULT
       const satelliteLayer = L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         {
-          attribution:
-            'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-          maxZoom: 18,
+          attribution: 'Tiles &copy; Esri &mdash; Maxar, Earthstar Geographics',
+          maxZoom: 19,
+        }
+      ).addTo(map);
+
+      // 2. Hybrid Boundaries and Place Labels Overlay
+      const hybridLabelsLayer = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        {
+          attribution: '',
+          maxZoom: 19,
+          opacity: 0.85,
         }
       );
 
-      baseLayersRef.current = { streets: streetsLayer, satellite: satelliteLayer };
+      // 3. OpenStreetMap Streets Layer
+      const streetsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+        subdomains: ['a', 'b', 'c'],
+      });
 
-      // Pulsing Marker Icon
+      tileLayersRef.current = {
+        satellite: satelliteLayer,
+        hybridLabels: hybridLabelsLayer,
+        streets: streetsLayer,
+      };
+
+      // Pulsing Main Coordinate Marker
       const pulseIcon = L.divIcon({
         className: 'custom-pulsing-marker',
         html: `
-          <div class="pulse"></div>
-          <div class="pin"></div>
+          <div class="relative flex items-center justify-center w-6 h-6">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white shadow-lg"></span>
+          </div>
         `,
         iconSize: [24, 24],
         iconAnchor: [12, 12],
       });
 
-      // Marker is non-interactive so it never intercepts map clicks
       const marker = L.marker([lat, lon], {
         icon: pulseIcon,
         interactive: false,
       }).addTo(map);
       markerRef.current = marker;
 
-      // Click listener: ALWAYS active, placing marker and notifying parent
+      // Click listener: either Scouting Observation or Regular Target Selection
       map.on('click', (e) => {
         const clickedLat = Number(e.latlng.lat.toFixed(6));
         const clickedLon = Number(e.latlng.lng.toFixed(6));
-        console.log('[SatHealth Map] Clicked at:', clickedLat, clickedLon);
 
-        if (markerRef.current) {
-          markerRef.current.setLatLng([clickedLat, clickedLon]);
-        }
-
-        if (onSelectCoordinateRef.current) {
-          onSelectCoordinateRef.current(clickedLat, clickedLon);
+        if (isScoutingModeActiveRef.current && onScoutCoordinateClickRef.current) {
+          onScoutCoordinateClickRef.current(clickedLat, clickedLon);
+        } else {
+          if (markerRef.current) {
+            markerRef.current.setLatLng([clickedLat, clickedLon]);
+          }
+          if (onSelectCoordinateRef.current) {
+            onSelectCoordinateRef.current(clickedLat, clickedLon);
+          }
         }
       });
 
-      // Track center changes when map is panned/dragged
       map.on('moveend', () => {
         const center = map.getCenter();
-        const centerLat = Number(center.lat.toFixed(6));
-        const centerLon = Number(center.lng.toFixed(6));
         if (onCenterChangeRef.current) {
-          onCenterChangeRef.current(centerLat, centerLon);
+          onCenterChangeRef.current(Number(center.lat.toFixed(6)), Number(center.lng.toFixed(6)));
         }
       });
 
@@ -136,27 +188,36 @@ export const Map: React.FC<MapProps> = ({
     };
   }, []);
 
-  // Update map marker and center when lat/lon change
+  // Update Basemap Layer
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
+    const { satellite, hybridLabels, streets } = tileLayersRef.current;
 
+    // Remove all layers first
+    if (satellite && map.hasLayer(satellite)) map.removeLayer(satellite);
+    if (hybridLabels && map.hasLayer(hybridLabels)) map.removeLayer(hybridLabels);
+    if (streets && map.hasLayer(streets)) map.removeLayer(streets);
+
+    if (basemap === 'satellite') {
+      if (satellite) satellite.addTo(map);
+    } else if (basemap === 'hybrid') {
+      if (satellite) satellite.addTo(map);
+      if (hybridLabels) hybridLabels.addTo(map);
+    } else if (basemap === 'streets') {
+      if (streets) streets.addTo(map);
+    }
+  }, [basemap]);
+
+  // Update target marker position
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
     if (markerRef.current) {
       markerRef.current.setLatLng([lat, lon]);
     }
-
-    // Only pan if target is outside current visible bounds
-    try {
-      const bounds = map.getBounds();
-      if (!bounds.contains([lat, lon])) {
-        map.panTo([lat, lon], { animate: true, duration: 0.8 });
-      }
-    } catch {
-      map.panTo([lat, lon]);
-    }
   }, [lat, lon]);
 
-  // Update Bounding Box Rectangle separately without moving map camera
+  // Update Bounding Box
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
@@ -175,19 +236,18 @@ export const Map: React.FC<MapProps> = ({
         ];
         const rect = L.rectangle(bounds, {
           color: '#10b981',
-          weight: 2,
+          weight: 1.5,
           fillColor: '#10b981',
-          fillOpacity: 0.18,
+          fillOpacity: 0.12,
           dashArray: '4, 4',
-          interactive: false, // Never block map clicks!
+          interactive: false,
         }).addTo(map);
-
         bboxRectRef.current = rect;
       }
     });
   }, [bbox]);
 
-  // Update Field Parcel Polygon Layer
+  // Update Parcel Polygon with Visual Overlay styling
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
@@ -199,93 +259,251 @@ export const Map: React.FC<MapProps> = ({
       }
 
       if (polygon && polygon.length >= 3) {
+        let strokeColor = '#10b981';
+        let fillColor = '#10b981';
+
+        if (visualMode === 'sar') {
+          strokeColor = '#38bdf8'; // Sky blue for microwave radar
+          fillColor = '#0284c7';
+        } else if (visualMode === 'ndre') {
+          strokeColor = '#2dd4bf'; // Teal for RedEdge
+          fillColor = '#0d9488';
+        } else if (visualMode === 'rgb') {
+          strokeColor = '#f59e0b';
+          fillColor = 'transparent';
+        }
+
+        const opacityDecimal = visualMode === 'rgb' ? 0.05 : (ndviOpacity / 100) * 0.45;
+
         const poly = L.polygon(polygon, {
-          color: '#10b981',
-          weight: 3,
-          fillColor: '#10b981',
-          fillOpacity: 0.2,
-          dashArray: '5, 5',
+          color: strokeColor,
+          weight: 2.5,
+          fillColor: fillColor,
+          fillOpacity: opacityDecimal,
+          dashArray: visualMode === 'rgb' ? '6, 6' : undefined,
           interactive: false,
         }).addTo(map);
 
         polygonLayerRef.current = poly;
 
         try {
-          map.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 16 });
+          map.fitBounds(poly.getBounds(), { padding: [50, 50], maxZoom: 16 });
         } catch {
           // ignore
         }
       }
     });
-  }, [polygon]);
+  }, [polygon, visualMode, ndviOpacity]);
 
-  // Toggle Basemap (Streets vs Satellite)
-  const toggleBasemap = () => {
+  // Render Scouting Markers on Leaflet Map
+  useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
-    const { streets, satellite } = baseLayersRef.current;
 
-    if (activeLayer === 'streets') {
-      if (streets) map.removeLayer(streets);
-      if (satellite) satellite.addTo(map);
-      setActiveLayer('satellite');
-    } else {
-      if (satellite) map.removeLayer(satellite);
-      if (streets) streets.addTo(map);
-      setActiveLayer('streets');
-    }
-  };
+    import('leaflet').then((L) => {
+      // Clear old scouting markers
+      scoutingMarkersRef.current.forEach((m) => map.removeLayer(m));
+      scoutingMarkersRef.current = [];
 
-  const handleZoomIn = () => {
-    mapInstanceRef.current?.zoomIn();
-  };
+      scoutingRecords.forEach((record) => {
+        let badgeColor = 'bg-amber-500 border-amber-300';
+        let pulseColor = 'bg-amber-400';
+        if (record.severity === 'critical') {
+          badgeColor = 'bg-red-600 border-red-300';
+          pulseColor = 'bg-red-500';
+        } else if (record.severity === 'low') {
+          badgeColor = 'bg-emerald-500 border-emerald-300';
+          pulseColor = 'bg-emerald-400';
+        }
 
-  const handleZoomOut = () => {
-    mapInstanceRef.current?.zoomOut();
-  };
+        const iconHtml = `
+          <div class="relative flex items-center justify-center w-7 h-7 cursor-pointer">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full ${pulseColor} opacity-75"></span>
+            <div class="relative flex items-center justify-center w-6 h-6 rounded-full ${badgeColor} border-2 text-white shadow-xl">
+              <span class="text-[10px] font-black">!</span>
+            </div>
+          </div>
+        `;
+
+        const scoutIcon = L.divIcon({
+          className: 'scouting-pin',
+          html: iconHtml,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        });
+
+        const popupHtml = `
+          <div style="font-family: sans-serif; min-width: 180px; padding: 4px; color: #0f172a;">
+            <div style="font-weight: bold; font-size: 12px; color: ${
+              record.severity === 'critical' ? '#dc2626' : '#d97706'
+            }; text-transform: uppercase;">
+              ${record.categoryLabel}
+            </div>
+            <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
+              Data: ${record.date} | Gravidade: <strong>${record.severity.toUpperCase()}</strong>
+            </div>
+            <p style="font-size: 11px; margin-top: 6px; line-height: 1.3; color: #334155;">
+              ${record.notes}
+            </p>
+          </div>
+        `;
+
+        const sm = L.marker([record.lat, record.lon], { icon: scoutIcon })
+          .bindPopup(popupHtml)
+          .addTo(map);
+
+        scoutingMarkersRef.current.push(sm);
+      });
+    });
+  }, [scoutingRecords]);
 
   return (
-    <div className="relative w-full h-full">
-      {/* Leaflet Map DOM Container */}
-      <div ref={mapContainerRef} className="w-full h-full z-0 cursor-crosshair" />
+    <div className="relative w-full h-full select-none">
+      {/* Map DOM Container */}
+      <div
+        ref={mapContainerRef}
+        className={`w-full h-full z-0 ${
+          isScoutingModeActive ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'
+        }`}
+      />
 
-      {/* Floating Map Controls */}
-      <div className="absolute top-4 right-4 z-20 flex flex-col space-y-2">
-        {/* Layer Switcher (Streets vs Satellite) */}
+      {/* TOP-LEFT: Basemap Switcher Dock */}
+      <div className="absolute top-4 left-4 z-10 flex items-center p-1 rounded-2xl bg-[#090d16]/90 border border-slate-800 shadow-xl backdrop-blur-md space-x-1 text-xs">
         <button
-          onClick={toggleBasemap}
-          className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-950/90 backdrop-blur-md border border-slate-800 text-xs font-semibold text-slate-200 hover:text-white hover:bg-slate-900 shadow-xl transition-all"
-          title="Toggle vector street map and high-resolution satellite imagery"
+          onClick={() => setBasemap('satellite')}
+          className={`px-3 py-1.5 rounded-xl font-semibold transition-all flex items-center space-x-1.5 ${
+            basemap === 'satellite'
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
         >
-          <Layers className="w-4 h-4 text-emerald-400" />
-          <span className="capitalize hidden sm:inline">
-            {activeLayer === 'streets' ? 'Satellite View' : 'Street Map'}
-          </span>
+          <span>Satélite HD</span>
         </button>
+        <button
+          onClick={() => setBasemap('hybrid')}
+          className={`px-3 py-1.5 rounded-xl font-semibold transition-all ${
+            basemap === 'hybrid'
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <span>Híbrido</span>
+        </button>
+        <button
+          onClick={() => setBasemap('streets')}
+          className={`px-3 py-1.5 rounded-xl font-semibold transition-all ${
+            basemap === 'streets'
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <span>Cartografia</span>
+        </button>
+      </div>
 
-        {/* Zoom In / Out Controls */}
-        <div className="flex flex-col rounded-xl overflow-hidden bg-slate-950/90 backdrop-blur-md border border-slate-800 shadow-xl">
+      {/* TOP-RIGHT: Scouting Mode & Zoom Controls */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col space-y-2">
+        {/* Scouting Mode Toggle Button */}
+        {onToggleScoutingMode && (
           <button
-            onClick={handleZoomIn}
-            className="p-2 text-slate-300 hover:text-white hover:bg-slate-900 transition-colors border-b border-slate-800"
-            title="Zoom In"
+            onClick={onToggleScoutingMode}
+            className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all shadow-xl flex items-center space-x-2 ${
+              isScoutingModeActive
+                ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-amber-500/30 animate-pulse'
+                : 'bg-[#090d16]/90 text-slate-200 border-slate-700 hover:border-amber-400/60 hover:text-white backdrop-blur-md'
+            }`}
+            title="Clique no mapa para registar pragas, fugas de rega ou clorose"
+          >
+            <Crosshair className="w-4 h-4" />
+            <span>{isScoutingModeActive ? 'Modo Scouting Ativo (Clique no Mapa)' : 'Registar Ocorrência de Campo'}</span>
+          </button>
+        )}
+
+        {/* Zoom In / Out */}
+        <div className="flex flex-col rounded-2xl bg-[#090d16]/90 border border-slate-800 shadow-xl backdrop-blur-md overflow-hidden self-end">
+          <button
+            onClick={() => mapInstanceRef.current?.zoomIn()}
+            className="p-2.5 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors border-b border-slate-800"
+            title="Aproximar"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
-            onClick={handleZoomOut}
-            className="p-2 text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
-            title="Zoom Out"
+            onClick={() => mapInstanceRef.current?.zoomOut()}
+            className="p-2.5 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            title="Afastar"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Crosshair target helper */}
-      <div className="absolute bottom-6 left-6 z-20 pointer-events-none hidden md:block">
-        <div className="px-3 py-1.5 rounded-lg bg-slate-950/80 backdrop-blur-md border border-slate-800 text-[11px] text-slate-400">
-          Click anywhere on the map to analyze NDVI with Copernicus Sentinel-2
+      {/* BOTTOM WIDGET: Visual Mode & NDVI Layer Opacity Slider */}
+      <div className="absolute bottom-6 left-4 z-10 p-3 rounded-2xl bg-[#090d16]/95 border border-slate-800 shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center space-y-2.5 sm:space-y-0 sm:space-x-4 text-xs">
+        {/* Visual Mode Selector */}
+        <div className="flex items-center space-x-1">
+          <span className="text-[11px] font-semibold text-slate-400 mr-1 flex items-center gap-1">
+            <Eye className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Camada:</span>
+          </span>
+          <button
+            onClick={() => setVisualMode('ndvi')}
+            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors ${
+              visualMode === 'ndvi'
+                ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/50'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            NDVI Vigor
+          </button>
+          <button
+            onClick={() => setVisualMode('ndre')}
+            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors ${
+              visualMode === 'ndre'
+                ? 'bg-teal-950 text-teal-300 border border-teal-500/50'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            NDRE Azoto
+          </button>
+          <button
+            onClick={() => setVisualMode('sar')}
+            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors ${
+              visualMode === 'sar'
+                ? 'bg-sky-950 text-sky-300 border border-sky-500/50'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Radar SAR S1
+          </button>
+          <button
+            onClick={() => setVisualMode('rgb')}
+            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors ${
+              visualMode === 'rgb'
+                ? 'bg-amber-950 text-amber-300 border border-amber-500/50'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            RGB Natural
+          </button>
+        </div>
+
+        {/* Vertical Separator */}
+        <div className="hidden sm:block h-5 w-px bg-slate-800" />
+
+        {/* Opacity Slider */}
+        <div className="flex items-center space-x-2.5 w-full sm:w-auto">
+          <Sliders className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="text-[11px] text-slate-400 font-medium">Opacidade:</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={ndviOpacity}
+            onChange={(e) => setNdviOpacity(parseInt(e.target.value, 10))}
+            className="w-24 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+          />
+          <span className="text-[11px] font-mono text-emerald-400 w-8">{ndviOpacity}%</span>
         </div>
       </div>
     </div>

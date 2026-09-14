@@ -1,18 +1,36 @@
 'use client';
 
-import React from 'react';
-import { ExternalLink, MapPin, Calculator, Sparkles, UploadCloud, Image as ImageIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  MapPin,
+  Bell,
+  Settings,
+  User,
+  Sparkles,
+  UploadCloud,
+  FileText,
+  ChevronDown,
+  Activity,
+  Satellite,
+  CheckCircle2,
+  Building2,
+} from 'lucide-react';
+import { FarmModel } from '../lib/gis/parcelStorage';
 
 interface NavbarProps {
   apiHealthy: boolean | null;
   lat: number;
   lon: number;
   locationName?: string | null;
-  onRefresh?: () => void;
+  farms: FarmModel[];
+  activeFarmId: string;
+  onSelectFarm: (farmId: string) => void;
   onOpenPricing?: () => void;
-  onOpenRoi?: () => void;
   onOpenParcelUploader?: () => void;
-  onOpenBanners?: () => void;
+  onOpenSettings?: () => void;
+  onOpenNotifications?: () => void;
+  onExportPdf?: () => void;
+  activeAnomaliesCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,70 +38,143 @@ export const Navbar: React.FC<NavbarProps> = ({
   lat,
   lon,
   locationName,
+  farms,
+  activeFarmId,
+  onSelectFarm,
   onOpenPricing,
-  onOpenRoi,
   onOpenParcelUploader,
-  onOpenBanners,
+  onOpenSettings,
+  onOpenNotifications,
+  onExportPdf,
+  activeAnomaliesCount = 3,
 }) => {
+  const [isFarmDropdownOpen, setIsFarmDropdownOpen] = useState(false);
+  const activeFarm = farms.find((f) => f.id === activeFarmId) || farms[0];
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 h-16 border-b border-slate-800/80 bg-[#090d16]/95 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between no-print select-none">
-      {/* Brand & Crisp Aerospace Logo */}
-      <div className="flex items-center space-x-3 shrink-0">
-        <div className="relative flex items-center justify-center w-10 h-10 rounded-2xl overflow-hidden border border-emerald-500/50 shadow-lg shadow-emerald-500/25 shrink-0 bg-[#0c1322]">
-          <img
-            src="/icon.svg"
-            alt="CropVision Logo"
-            className="w-full h-full object-contain p-1"
-          />
-          <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
+    <header className="fixed top-0 left-0 right-0 z-40 h-16 border-b border-slate-800/90 bg-[#070b14]/95 backdrop-blur-xl px-3 sm:px-6 flex items-center justify-between no-print select-none">
+      {/* LEFT: Brand & Prominent Active Satellite Badge & Farm Switcher */}
+      <div className="flex items-center space-x-3 sm:space-x-4 shrink-0">
+        {/* Crisp Satellite Logo with PROMINENT OVERLAID PULSING GREEN ACTIVE BADGE */}
+        <div className="relative shrink-0 flex items-center">
+          <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-[#0c1322] border border-emerald-500/50 shadow-lg shadow-emerald-500/20 overflow-hidden">
+            <img
+              src="/icon.svg"
+              alt="CropVision"
+              className="w-full h-full object-contain p-1.5"
+            />
+          </div>
+
+          {/* Overlaid Green Active Status Dot (Highly Visible & Elevated) */}
+          <div
+            className="absolute -top-1.5 -right-1.5 z-20 flex items-center justify-center"
+            title="Sinal de Satélite Ativo em Tempo Real"
+          >
+            <span className="animate-ping absolute inline-flex h-4 w-4 rounded-full bg-emerald-400 opacity-80"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400 border-2 border-[#070b14] shadow-[0_0_8px_#34d399]"></span>
+          </div>
         </div>
 
+        {/* Brand Typography */}
         <div className="flex flex-col justify-center">
           <div className="flex items-center space-x-2">
             <span className="text-lg font-black tracking-wider text-white font-mono flex items-center">
               CROP<span className="text-emerald-400">VISION</span>
             </span>
-            <span className="text-[9px] font-black tracking-widest text-emerald-300 bg-emerald-950/90 border border-emerald-500/40 px-1.5 py-0.5 rounded uppercase">
+            <span className="hidden sm:inline-block text-[9px] font-black tracking-widest text-emerald-300 bg-emerald-950/90 border border-emerald-500/40 px-1.5 py-0.5 rounded uppercase">
               DEEP-TECH SAR
             </span>
           </div>
-          <div className="text-[10px] text-slate-400 tracking-wide font-medium items-center space-x-1.5 hidden md:flex">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-            <span>ESA Copernicus Sentinel-2 L2A &amp; Sentinel-1 SAR Radar</span>
+          <div className="text-[10px] text-emerald-400 font-mono tracking-wider flex items-center space-x-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+            <span>FEED ATIVO: SENTINEL-2 &amp; S1</span>
           </div>
+        </div>
+
+        {/* Divider */}
+        <div className="hidden lg:block h-6 w-px bg-slate-800" />
+
+        {/* Farm Selector Dropdown */}
+        <div className="relative hidden md:block">
+          <button
+            onClick={() => setIsFarmDropdownOpen(!isFarmDropdownOpen)}
+            className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/70 hover:border-emerald-500/50 text-xs font-semibold text-slate-200 transition-all shadow-sm"
+          >
+            <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="max-w-[140px] truncate">{activeFarm?.name || 'Exploração Agrícola'}</span>
+            <ChevronDown className="w-3 h-3 text-slate-400" />
+          </button>
+
+          {isFarmDropdownOpen && (
+            <div className="absolute top-full mt-2 left-0 w-64 rounded-2xl bg-[#0c1322] border border-slate-700 shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="text-[10px] uppercase tracking-wider font-mono text-slate-400 px-3 py-1 font-bold">
+                Explorações Cadastradas
+              </div>
+              <div className="space-y-1 mt-1">
+                {farms.map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => {
+                      onSelectFarm(f.id);
+                      setIsFarmDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-colors ${
+                      f.id === activeFarmId
+                        ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40'
+                        : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="font-bold">{f.name}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">{f.locationLabel}</div>
+                    </div>
+                    {f.id === activeFarmId && (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Center Mission Ticker (Desktop) */}
-      <div className="hidden xl:flex items-center space-x-3 px-4 py-1.5 rounded-full bg-slate-900/90 border border-slate-800/90 text-xs shadow-inner">
-        <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold">
-          <MapPin className="w-3.5 h-3.5 shrink-0" />
-          <span className="max-w-[220px] truncate text-slate-200 font-medium">
-            {locationName || 'Alvo Agrícola'}
-          </span>
+      {/* CENTER: System Telemetry Status Badge (Desktop) */}
+      <div className="hidden xl:flex items-center space-x-3 px-4 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-xs shadow-inner">
+        <div className="flex items-center space-x-1.5 text-emerald-400 font-mono text-[11px] font-bold">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse"></span>
+          <span>Satélite S2: Nominal | S1 SAR: Ativo</span>
         </div>
         <span className="text-slate-700">|</span>
         <span className="font-mono text-slate-400 text-[11px]">
           {lat.toFixed(4)}°, {lon.toFixed(4)}°
         </span>
-        <span className="text-slate-700">|</span>
-        <div className="flex items-center space-x-1 text-[10px] font-mono text-emerald-400 uppercase">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]"></span>
-          <span>STAC Cloud Active</span>
-        </div>
       </div>
 
-      {/* Right Action Buttons & Monetization */}
-      <div className="flex items-center space-x-2 shrink-0">
-        {/* Upload Parcel GeoJSON Button */}
+      {/* RIGHT: Actions & User Dock */}
+      <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+        {/* Notification Bell with Badge */}
+        {onOpenNotifications && (
+          <button
+            onClick={onOpenNotifications}
+            className="relative p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-all shadow-sm"
+            title="Centro de Alertas e Notificações de Anomalias"
+          >
+            <Bell className="w-4 h-4 text-slate-300" />
+            {activeAnomaliesCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] font-bold text-white shadow-md">
+                {activeAnomaliesCount}
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* SIG Parcel Upload */}
         {onOpenParcelUploader && (
           <button
             onClick={onOpenParcelUploader}
             className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-300 hover:text-white border border-emerald-500/30 hover:border-emerald-500/60 text-xs font-semibold transition-all shadow-sm"
-            title="Importar polígono de parcela em GeoJSON ou KML"
+            title="Carregar limites cadastrais (Shapefile, GeoJSON ou KML)"
           >
             <UploadCloud className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="hidden sm:inline">Polígono SIG</span>
@@ -91,53 +182,49 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         )}
 
-        {/* Banners 4K & Brand Assets Button */}
-        {onOpenBanners && (
+        {/* Export Technical PDF Report Button */}
+        {onExportPdf && (
           <button
-            onClick={onOpenBanners}
-            className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-sky-500/30 hover:border-sky-500/60 text-xs font-semibold transition-all shadow-sm"
-            title="Ver galeria oficial de banners 4K e logótipos aeroespaciais"
+            onClick={onExportPdf}
+            className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 hover:border-slate-600 text-xs font-semibold transition-all shadow-sm"
+            title="Exportar Relatório Técnico Agronómico Oficial em PDF"
           >
-            <ImageIcon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-            <span>Banners 4K</span>
+            <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Relatório PDF</span>
           </button>
         )}
 
-        {/* ROI Calculator Button */}
-        {onOpenRoi && (
+        {/* Farm Settings Button */}
+        {onOpenSettings && (
           <button
-            onClick={onOpenRoi}
-            className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-800 hover:border-slate-700 text-xs font-medium transition-all"
-            title="Calcular poupança estimada da herdade"
+            onClick={onOpenSettings}
+            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition-all shadow-sm"
+            title="Definições Agronómicas da Exploração (Cultura, Rega, Compasso)"
           >
-            <Calculator className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>Calculadora de ROI</span>
+            <Settings className="w-4 h-4 text-slate-300" />
           </button>
         )}
 
-        {/* Pricing Modal Highlighted Button (Whop) */}
+        {/* Pricing / Monetization Button */}
         {onOpenPricing && (
           <button
             onClick={onOpenPricing}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs transition-all shadow-md shadow-emerald-500/25 border border-emerald-300/40"
-            title="Ver planos e preços CropVision na Whop"
+            className="flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs transition-all shadow-md shadow-emerald-500/20 border border-emerald-300/40"
+            title="Consultar Planos B2B e Subscrições CropVision"
           >
             <Sparkles className="w-3.5 h-3.5 fill-slate-950 shrink-0" />
-            <span>Planos &amp; Preços</span>
+            <span className="hidden sm:inline">Planos B2B</span>
+            <span className="sm:hidden">Pro</span>
           </button>
         )}
 
-        {/* GitHub Repo Link */}
-        <a
-          href="https://github.com/Miguel-Galrito/cropvision-saas"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden sm:flex items-center space-x-1 px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-colors"
-          title="Ver código no GitHub"
+        {/* User Profile Avatar */}
+        <div
+          className="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-emerald-400 shrink-0 font-mono text-xs font-bold shadow-inner"
+          title="Sessão Iniciada: Agrónomo Responsável"
         >
-          <span>GitHub</span>
-          <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-        </a>
+          <User className="w-4 h-4 text-emerald-400" />
+        </div>
       </div>
     </header>
   );
