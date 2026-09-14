@@ -645,7 +645,7 @@ export const Map: React.FC<MapProps> = ({
 
       {/* BOTTOM WIDGET: Visual Mode & NDVI Layer Opacity Slider */}
       <div
-        className={`absolute bottom-6 left-4 z-10 p-3 rounded-2xl border shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center space-y-2.5 sm:space-y-0 sm:space-x-4 text-xs transition-colors ${
+        className={`absolute bottom-36 sm:bottom-6 left-3 sm:left-4 z-20 p-2.5 sm:p-3 max-w-[calc(100vw-24px)] rounded-2xl border shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 text-xs transition-colors overflow-x-auto no-scrollbar ${
           isLight
             ? 'bg-white/95 border-slate-200 text-slate-800'
             : 'bg-[#090d16]/95 border-slate-800 text-slate-200'

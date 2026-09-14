@@ -13,6 +13,7 @@ import { ScoutingModal } from '../components/ScoutingModal';
 import { FieldBookModal } from '../components/FieldBookModal';
 import { HistoricalComparatorModal } from '../components/HistoricalComparatorModal';
 import { RoiCalculatorModal } from '../components/RoiCalculatorModal';
+import { MobileBottomDock } from '../components/MobileBottomDock';
 import { DiseaseRiskAssessment } from '../lib/disease/epidemiology';
 import {
   AnalyzeResponse,
@@ -196,6 +197,10 @@ export default function DashboardPage() {
   const [analysisData, setAnalysisData] = useState<AnalyzeResponse | null>(null);
   const [timeseriesData, setTimeseriesData] = useState<TimeSeriesPoint[] | null>(null);
   const [error, setError] = useState<{ message: string; detail?: any } | null>(null);
+
+  // Mobile & Panel Viewport State
+  const [isAnalysisCollapsed, setIsAnalysisCollapsed] = useState<boolean>(false);
+  const [analysisTab, setAnalysisTab] = useState<'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health'>('optical');
 
   // 9. Modals & Gating State
   const [isParcelUploaderOpen, setIsParcelUploaderOpen] = useState<boolean>(false);
@@ -656,6 +661,10 @@ export default function DashboardPage() {
           farmName={activeFarm?.name}
           parcelName={activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1')}
           isProSimulated={isProSimulated}
+          isCollapsed={isAnalysisCollapsed}
+          onToggleCollapse={() => setIsAnalysisCollapsed((prev) => !prev)}
+          activeTab={analysisTab}
+          onTabChange={setAnalysisTab}
           onRequirePro={(reason) => {
             setPricingReason(reason as any);
             setIsPricingOpen(true);
@@ -667,6 +676,7 @@ export default function DashboardPage() {
           onOpenScoutingAtCoord={(scoutLat, scoutLon) => {
             setScoutingModalCoord({ lat: scoutLat, lon: scoutLon });
           }}
+          onClose={() => setAnalysisData(null)}
           onLogTreatmentToFieldBook={(disease) => {
             setFieldBookPhytoPrefill({
               commercialProduct: disease.recommendedActiveIngredients[0]
@@ -813,11 +823,53 @@ export default function DashboardPage() {
 
       {/* Public Audit Toast Notification */}
       {auditToastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-emerald-950 border border-emerald-500/70 text-emerald-200 text-xs font-bold shadow-2xl flex items-center space-x-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-emerald-950 border border-emerald-500/70 text-emerald-200 text-xs font-bold shadow-2xl flex items-center space-x-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{auditToastMessage}</span>
         </div>
       )}
+
+      {/* 7. MOBILE THUMB-FRIENDLY BOTTOM NAVIGATION DOCK & DRAWER */}
+      <MobileBottomDock
+        lang={lang}
+        theme={theme}
+        isAnalysisOpen={!!analysisData}
+        isAnalysisCollapsed={isAnalysisCollapsed}
+        onToggleAnalysis={() => {
+          if (!analysisData && activeParcel) {
+            runAnalysis(lat, lon, activeParcel.areaHectares);
+            setIsAnalysisCollapsed(false);
+          } else {
+            setIsAnalysisCollapsed((prev) => !prev);
+          }
+        }}
+        onShowMap={() => {
+          setIsAnalysisCollapsed(true);
+        }}
+        onOpenPhyto={() => {
+          setAnalysisTab('health');
+          setIsAnalysisCollapsed(false);
+          if (!analysisData && activeParcel) {
+            runAnalysis(lat, lon, activeParcel.areaHectares);
+          }
+        }}
+        onOpenFieldBook={() => setIsFieldBookOpen(true)}
+        onToggleDrawingMode={() => setIsDrawingModeActive((prev) => !prev)}
+        isDrawingModeActive={isDrawingModeActive}
+        onOpenParcelUploader={() => setIsParcelUploaderOpen(true)}
+        onOpenComparator={() => setIsComparatorOpen(true)}
+        onOpenRoi={() => setIsRoiModalOpen(true)}
+        onShareAudit={handleShareAudit}
+        onExportPdf={handleExportPdf}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenPricing={() => {
+          setPricingReason('generic');
+          setIsPricingOpen(true);
+        }}
+        onToggleTheme={handleToggleTheme}
+        onLanguageChange={handleLanguageChange}
+        activeAnomaliesCount={3}
+      />
     </div>
   );
 }

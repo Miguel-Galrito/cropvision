@@ -74,6 +74,10 @@ interface AnalysisPanelProps {
   onShareAudit?: () => void;
   onOpenComparator?: () => void;
   onOpenRoi?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  activeTab?: 'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health';
+  onTabChange?: (tab: 'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health') => void;
   onClose?: () => void;
 }
 
@@ -88,6 +92,10 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   farmName = 'Herdade Monte Novo',
   parcelName = 'Talhão 1',
   isProSimulated = false,
+  isCollapsed: propIsCollapsed,
+  onToggleCollapse,
+  activeTab: propActiveTab,
+  onTabChange,
   onRequirePro,
   onExportPdf,
   onOpenScoutingAtCoord,
@@ -97,11 +105,33 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   onOpenRoi,
   onClose,
 }) => {
-  const [modeTab, setModeTab] = useState<'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health'>('optical');
+  const [internalModeTab, setInternalModeTab] = useState<'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health'>('optical');
+  const modeTab = propActiveTab !== undefined ? propActiveTab : internalModeTab;
+  const setModeTab = (tab: 'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health') => {
+    if (onTabChange) onTabChange(tab);
+    setInternalModeTab(tab);
+  };
+
   const [spectralIndex, setSpectralIndex] = useState<'ndvi' | 'ndre' | 'ndwi' | 'evi' | 'msavi'>('ndvi');
   const [selectedFertilizer, setSelectedFertilizer] = useState<string>('can-27');
   const [fertilizerPriceTon, setFertilizerPriceTon] = useState<number>(390);
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+
+  const [internalCollapsed, setInternalCollapsed] = useState<boolean>(false);
+  const isCollapsed = propIsCollapsed !== undefined ? propIsCollapsed : internalCollapsed;
+  const toggleCollapsed = () => {
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    } else {
+      setInternalCollapsed((prev) => !prev);
+    }
+  };
+  const setIsCollapsed = (val: boolean | ((prev: boolean) => boolean)) => {
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    } else {
+      setInternalCollapsed(val);
+    }
+  };
   const [agroClimate, setAgroClimate] = useState<AgroClimateData | null>(null);
   const [isExportingVra, setIsExportingVra] = useState<boolean>(false);
   const [activeAnomalyDismissed, setActiveAnomalyDismissed] = useState<boolean>(false);
@@ -284,12 +314,30 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
   return (
     <div
-      className={`fixed top-18 sm:top-20 right-3 sm:right-6 z-30 w-[94vw] sm:w-[460px] md:w-[500px] max-h-[85vh] rounded-3xl bg-[#090d16]/95 border border-slate-800/90 shadow-2xl backdrop-blur-2xl flex flex-col text-slate-200 transition-all duration-300 no-print select-none ${
-        isCollapsed ? 'h-14 overflow-hidden' : 'overflow-hidden'
+      className={`fixed z-30 bottom-16 left-0 right-0 sm:bottom-auto sm:top-20 sm:right-6 sm:left-auto sm:w-[460px] md:w-[500px] rounded-t-3xl sm:rounded-3xl bg-[#090d16]/95 border border-slate-800/90 shadow-2xl backdrop-blur-2xl flex flex-col text-slate-200 transition-all duration-300 no-print select-none ${
+        isCollapsed
+          ? 'h-16 sm:h-14 overflow-hidden'
+          : 'h-[75dvh] max-h-[80dvh] sm:h-auto sm:max-h-[85vh] overflow-hidden'
       }`}
     >
+      {/* Mobile Drag/Grab Handle Pill */}
+      <div
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="w-full pt-2 pb-1 flex justify-center items-center sm:hidden cursor-pointer active:opacity-70"
+      >
+        <div className="w-12 h-1.5 bg-slate-600/80 rounded-full hover:bg-emerald-500 transition-colors" />
+      </div>
+
       {/* PANEL TOP HEADER */}
-      <div className="p-3.5 sm:p-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/60 shrink-0">
+      <div 
+        onClick={(e) => {
+          // On mobile, clicking anywhere on the header toggles expand/collapse
+          if (window.innerWidth < 640 && (e.target as HTMLElement).tagName !== 'BUTTON') {
+            setIsCollapsed(!isCollapsed);
+          }
+        }}
+        className="p-3 sm:p-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/60 shrink-0 cursor-pointer sm:cursor-default"
+      >
         <div className="flex items-center space-x-2.5 min-w-0">
           <div className="p-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0">
             <Activity className="w-4 h-4" />
@@ -314,7 +362,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           {/* Share Web Audit Button */}
           {onShareAudit && (
             <button
-              onClick={onShareAudit}
+              onClick={(e) => { e.stopPropagation(); onShareAudit(); }}
               className="px-2.5 py-1 rounded-xl bg-sky-950/60 hover:bg-sky-900/80 border border-sky-500/40 text-sky-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
               title={lang === 'en' ? 'Share Public Read-Only Audit Link' : 'Partilhar Relatório de Auditoria Web'}
             >
@@ -326,7 +374,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           {/* Temporal Comparator Button */}
           {onOpenComparator && (
             <button
-              onClick={onOpenComparator}
+              onClick={(e) => { e.stopPropagation(); onOpenComparator(); }}
               className="px-2.5 py-1 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
               title={lang === 'en' ? 'Sentinel-2 Temporal Comparator' : 'Comparador Temporal de Satélite'}
             >
@@ -338,7 +386,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           {/* Dynamic ROI Calculator Button */}
           {onOpenRoi && (
             <button
-              onClick={onOpenRoi}
+              onClick={(e) => { e.stopPropagation(); onOpenRoi(); }}
               className="px-2 py-1 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/40 text-emerald-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
               title={lang === 'en' ? 'Dynamic ROI & Carbon Calculator' : 'Calculadora de ROI Agrícola & CO2'}
             >
@@ -349,7 +397,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           {/* Export PDF Button */}
           {onExportPdf && (
             <button
-              onClick={onExportPdf}
+              onClick={(e) => { e.stopPropagation(); onExportPdf(); }}
               className="px-2.5 py-1 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
               title={lang === 'en' ? 'Generate Official Technical PDF Report' : 'Gerar Relatório Técnico Agronómico em PDF'}
             >
@@ -360,16 +408,16 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
           {/* Collapse Toggle */}
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={(e) => { e.stopPropagation(); setIsCollapsed(!isCollapsed); }}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
-            {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            {isCollapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
           {/* Close Panel */}
           {onClose && (
             <button
-              onClick={onClose}
+              onClick={(e) => { e.stopPropagation(); onClose(); }}
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
             >
               <X className="w-4 h-4" />
@@ -380,7 +428,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
       {/* BODY CONTENT (Scrollable when expanded) */}
       {!isCollapsed && (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs pr-2.5">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 text-xs pr-2.5 overscroll-contain">
           {/* EARLY WARNING ALERT CARD (If Anomaly Detected) */}
           {anomalyInfo.hasAnomaly && !activeAnomalyDismissed && (
             <div className="p-3 rounded-2xl bg-red-950/40 border border-red-500/60 text-red-200 animate-in fade-in duration-200 shadow-lg shadow-red-950/30">
@@ -416,11 +464,11 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </div>
           )}
 
-          {/* TAB SELECTOR DOCK */}
-          <div className="grid grid-cols-6 p-1 rounded-2xl bg-slate-900/80 border border-slate-800 text-[10px] font-bold text-center gap-0.5">
+          {/* TAB SELECTOR DOCK - Horizontally scrollable on mobile */}
+          <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar p-1.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-[11px] font-bold shrink-0">
             <button
               onClick={() => setModeTab('optical')}
-              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
+              className={`py-1.5 px-3 rounded-xl transition-all whitespace-nowrap shrink-0 ${
                 modeTab === 'optical'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white'
@@ -430,7 +478,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
             <button
               onClick={() => setModeTab('sar')}
-              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
+              className={`py-1.5 px-3 rounded-xl transition-all whitespace-nowrap shrink-0 ${
                 modeTab === 'sar'
                   ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30'
                   : 'text-slate-400 hover:text-white'
@@ -440,7 +488,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
             <button
               onClick={() => setModeTab('prescription')}
-              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
+              className={`py-1.5 px-3 rounded-xl transition-all whitespace-nowrap shrink-0 ${
                 modeTab === 'prescription'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white'
@@ -450,7 +498,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
             <button
               onClick={() => setModeTab('irrigation')}
-              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
+              className={`py-1.5 px-3 rounded-xl transition-all whitespace-nowrap shrink-0 ${
                 modeTab === 'irrigation'
                   ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
                   : 'text-slate-400 hover:text-white'
@@ -460,7 +508,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
             <button
               onClick={() => setModeTab('climate')}
-              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
+              className={`py-1.5 px-3 rounded-xl transition-all whitespace-nowrap shrink-0 ${
                 modeTab === 'climate'
                   ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
                   : 'text-slate-400 hover:text-white'
@@ -470,13 +518,13 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
             <button
               onClick={() => setModeTab('health')}
-              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
+              className={`py-1.5 px-3 rounded-xl transition-all whitespace-nowrap shrink-0 ${
                 modeTab === 'health'
                   ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              {t.tabHealth}
+              {lang === 'en' ? 'Phytosanitary Risk' : 'Fitossanidade'}
             </button>
           </div>
 
