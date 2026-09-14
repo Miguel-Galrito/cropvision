@@ -336,6 +336,32 @@ export const Map: React.FC<MapProps> = ({
     });
   }, [polygon, visualMode, ndviOpacity]);
 
+  // Ensure satellite tiles remain mounted, 100% visible and responsive when toggling drawing mode
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    // Invalidate size immediately and after short tick to ensure no black/blank tile freeze
+    map.invalidateSize();
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 60);
+
+    // Keep active basemap tiles at 100% opacity
+    if (tileLayersRef.current.satellite) {
+      tileLayersRef.current.satellite.setOpacity(1);
+    }
+
+    if (!isDrawingModeActive) {
+      if (tempDrawGroupRef.current) {
+        tempDrawGroupRef.current.clearLayers();
+      }
+      setDrawingPoints([]);
+    }
+
+    return () => clearTimeout(timer);
+  }, [isDrawingModeActive]);
+
   // Render Temporary Interactive Drawing Points & Polygon
   useEffect(() => {
     if (!mapInstanceRef.current || !tempDrawGroupRef.current) return;
@@ -347,13 +373,29 @@ export const Map: React.FC<MapProps> = ({
     import('leaflet').then((L) => {
       // Draw vertex markers
       drawingPoints.forEach(([pLat, pLon], idx) => {
+        const isFirst = idx === 0;
+        const canClose = isFirst && drawingPoints.length >= 3;
+
         const dot = L.circleMarker([pLat, pLon], {
-          radius: 5,
-          fillColor: idx === 0 ? '#f59e0b' : '#10b981',
+          radius: canClose ? 8 : 5,
+          fillColor: isFirst ? '#f59e0b' : '#10b981',
           fillOpacity: 1,
           color: '#ffffff',
-          weight: 2,
+          weight: canClose ? 3 : 2,
         });
+
+        // Allow clicking the first vertex to seal/finish polygon
+        if (canClose) {
+          dot.bindTooltip(
+            lang === 'en' ? 'Click to close field polygon' : 'Clique para fechar o talhão',
+            { permanent: false, direction: 'top' }
+          );
+          dot.on('click', (ev) => {
+            L.DomEvent.stopPropagation(ev);
+            handleFinishDrawing();
+          });
+        }
+
         group.addLayer(dot);
       });
 
@@ -378,7 +420,7 @@ export const Map: React.FC<MapProps> = ({
         group.addLayer(tempPoly);
       }
     });
-  }, [isDrawingModeActive, drawingPoints]);
+  }, [isDrawingModeActive, drawingPoints, lang]);
 
   // Render Scouting Markers on Leaflet Map
   useEffect(() => {
@@ -417,7 +459,7 @@ export const Map: React.FC<MapProps> = ({
         });
 
         const popupHtml = `
-          <div style="font-family: sans-serif; min-width: 180px; padding: 4px; color: #0f172a;">
+          <div style="font-family: sans-serif; min-width: 190px; max-width: 240px; padding: 4px; color: #0f172a;">
             <div style="font-weight: bold; font-size: 12px; color: ${
               record.severity === 'critical' ? '#dc2626' : '#d97706'
             }; text-transform: uppercase;">
@@ -426,6 +468,13 @@ export const Map: React.FC<MapProps> = ({
             <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
               Data: ${record.date} | Gravidade: <strong>${record.severity.toUpperCase()}</strong>
             </div>
+            ${
+              record.photoUrl
+                ? `<div style="margin-top: 6px; border-radius: 6px; overflow: hidden; border: 1px solid #cbd5e1;">
+                    <img src="${record.photoUrl}" alt="Foto de Campo" style="width: 100%; height: 85px; object-fit: cover; display: block;" />
+                   </div>`
+                : ''
+            }
             <p style="font-size: 11px; margin-top: 6px; line-height: 1.3; color: #334155;">
               ${record.notes}
             </p>
@@ -444,17 +493,25 @@ export const Map: React.FC<MapProps> = ({
   // Finish polygon drawing
   const handleFinishDrawing = () => {
     if (drawingPoints.length < 3) return;
+    const pointsToFinish = [...drawingPoints];
+    const areaHa = calculatePolygonAreaHectares(pointsToFinish);
+    const center = getPolygonCenter(pointsToFinish);
 
-    const areaHa = calculatePolygonAreaHectares(drawingPoints);
-    const center = getPolygonCenter(drawingPoints);
-
-    if (onPolygonCreated) {
-      onPolygonCreated(drawingPoints, areaHa, center[0], center[1]);
+    if (tempDrawGroupRef.current) {
+      tempDrawGroupRef.current.clearLayers();
     }
-
     setDrawingPoints([]);
+
     if (onToggleDrawingMode) {
       onToggleDrawingMode();
+    }
+
+    if (onPolygonCreated) {
+      onPolygonCreated(pointsToFinish, areaHa, center[0], center[1]);
+    }
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.invalidateSize();
     }
   };
 
@@ -463,9 +520,17 @@ export const Map: React.FC<MapProps> = ({
   };
 
   const handleCancelDrawing = () => {
+    if (tempDrawGroupRef.current) {
+      tempDrawGroupRef.current.clearLayers();
+    }
     setDrawingPoints([]);
+
     if (onToggleDrawingMode) {
       onToggleDrawingMode();
+    }
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.invalidateSize();
     }
   };
 
@@ -479,7 +544,7 @@ export const Map: React.FC<MapProps> = ({
         ref={mapContainerRef}
         className={`w-full h-full z-0 ${
           isDrawingModeActive
-            ? 'cursor-crosshair'
+            ? 'drawing-mode-active cursor-crosshair'
             : isScoutingModeActive
             ? 'cursor-crosshair'
             : 'cursor-grab active:cursor-grabbing'

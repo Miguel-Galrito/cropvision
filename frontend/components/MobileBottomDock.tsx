@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import {
@@ -21,6 +21,8 @@ import {
   Globe,
   CheckCircle2,
   ChevronUp,
+  Tractor,
+  Droplets,
 } from 'lucide-react';
 import { Language, translations } from '../lib/i18n';
 
@@ -29,7 +31,9 @@ interface MobileBottomDockProps {
   theme?: 'dark' | 'light';
   isAnalysisOpen?: boolean;
   isAnalysisCollapsed?: boolean;
+  activeTab?: 'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health';
   onToggleAnalysis?: () => void;
+  onSelectTab?: (tab: 'prescription' | 'irrigation' | 'health') => void;
   onOpenPhyto?: () => void;
   onOpenFieldBook?: () => void;
   onShowMap?: () => void;
@@ -40,6 +44,7 @@ interface MobileBottomDockProps {
   onOpenRoi?: () => void;
   onShareAudit?: () => void;
   onExportPdf?: () => void;
+  onExportConsolidatedPdf?: () => void;
   onOpenSettings?: () => void;
   onOpenPricing?: () => void;
   onToggleTheme?: () => void;
@@ -52,7 +57,9 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
   theme = 'dark',
   isAnalysisOpen = true,
   isAnalysisCollapsed = false,
+  activeTab = 'optical',
   onToggleAnalysis,
+  onSelectTab,
   onOpenPhyto,
   onOpenFieldBook,
   onShowMap,
@@ -63,6 +70,7 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
   onOpenRoi,
   onShareAudit,
   onExportPdf,
+  onExportConsolidatedPdf,
   onOpenSettings,
   onOpenPricing,
   onToggleTheme,
@@ -75,7 +83,7 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
 
   return (
     <>
-      {/* 1. FIXED BOTTOM DOCK (MOBILE ONLY: < sm) */}
+      {/* 1. FIXED BOTTOM DOCK (MOBILE ONLY: < sm) - 4 EXACT FAST ACTION BUTTONS */}
       <nav
         className={`fixed bottom-0 left-0 right-0 z-40 sm:hidden h-16 border-t backdrop-blur-2xl px-2 flex items-center justify-around select-none transition-colors pb-safe ${
           isLight
@@ -83,82 +91,101 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
             : 'bg-[#070b14]/95 border-slate-800/90 text-slate-300 shadow-[0_-4px_24px_rgba(0,0,0,0.45)]'
         }`}
       >
-        {/* Tab 1: Mapa (Collapses telemetry to view satellite map) */}
+        {/* Button 1: Mapa / Talhões */}
         <button
           onClick={() => {
             setIsMoreDrawerOpen(false);
             if (onShowMap) onShowMap();
           }}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
             isAnalysisCollapsed
-              ? 'text-emerald-500 font-bold'
+              ? 'text-emerald-400 font-bold'
               : isLight
               ? 'text-slate-600 hover:text-slate-900'
               : 'text-slate-400 hover:text-white'
           }`}
         >
           <MapPin className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] tracking-tight">{lang === 'en' ? 'Map' : 'Mapa'}</span>
+          <span className="text-[10px] tracking-tight font-semibold">
+            {lang === 'en' ? 'Map / Fields' : 'Mapa / Talhões'}
+          </span>
         </button>
 
-        {/* Tab 2: Telemetria / Análise (Toggles expand/collapse of bottom sheet) */}
+        {/* Button 2: VRA Adubo */}
         <button
           onClick={() => {
             setIsMoreDrawerOpen(false);
-            if (onToggleAnalysis) onToggleAnalysis();
+            if (onSelectTab) {
+              onSelectTab('prescription');
+            } else if (onToggleAnalysis) {
+              onToggleAnalysis();
+            }
           }}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
-            !isAnalysisCollapsed
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+            !isAnalysisCollapsed && activeTab === 'prescription'
               ? 'text-emerald-400 font-bold'
               : isLight
               ? 'text-slate-600 hover:text-slate-900'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Activity className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] tracking-tight">{lang === 'en' ? 'Telemetry' : 'Painel'}</span>
+          <Tractor className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] tracking-tight font-semibold">
+            {lang === 'en' ? 'VRA Fertilizer' : 'VRA Adubo'}
+          </span>
         </button>
 
-        {/* Tab 3: Fitossanidade (Direct access to disease models) */}
+        {/* Button 3: Rega FAO */}
         <button
           onClick={() => {
             setIsMoreDrawerOpen(false);
-            if (onOpenPhyto) onOpenPhyto();
+            if (onSelectTab) {
+              onSelectTab('irrigation');
+            } else if (onToggleAnalysis) {
+              onToggleAnalysis();
+            }
           }}
-          className="relative flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all text-slate-400 hover:text-white"
-        >
-          <div className="relative">
-            <ShieldAlert className="w-5 h-5 mb-0.5 text-rose-500" />
-            {activeAnomaliesCount > 0 && (
-              <span className="absolute -top-1 -right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 border border-slate-900 animate-pulse" />
-            )}
-          </div>
-          <span className="text-[10px] tracking-tight">{lang === 'en' ? 'Diseases' : 'Sanidade'}</span>
-        </button>
-
-        {/* Tab 4: Caderno de Campo Oficial (DGAV / IFAP) */}
-        <button
-          onClick={() => {
-            setIsMoreDrawerOpen(false);
-            if (onOpenFieldBook) onOpenFieldBook();
-          }}
-          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all text-slate-400 hover:text-white"
-        >
-          <BookOpen className="w-5 h-5 mb-0.5 text-emerald-400" />
-          <span className="text-[10px] tracking-tight">{lang === 'en' ? 'Field Book' : 'Caderno'}</span>
-        </button>
-
-        {/* Tab 5: Mais / Quick Menu Drawer Trigger */}
-        <button
-          onClick={() => setIsMoreDrawerOpen(!isMoreDrawerOpen)}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
-            isMoreDrawerOpen
-              ? 'text-emerald-400 font-bold'
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+            !isAnalysisCollapsed && activeTab === 'irrigation'
+              ? 'text-sky-400 font-bold'
+              : isLight
+              ? 'text-slate-600 hover:text-slate-900'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Menu className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] tracking-tight">{lang === 'en' ? 'More' : 'Mais'}</span>
+          <Droplets className="w-5 h-5 mb-0.5 text-sky-400" />
+          <span className="text-[10px] tracking-tight font-semibold">
+            {lang === 'en' ? 'FAO Water' : 'Rega FAO'}
+          </span>
+        </button>
+
+        {/* Button 4: Alertas & Risco */}
+        <button
+          onClick={() => {
+            setIsMoreDrawerOpen(false);
+            if (onSelectTab) {
+              onSelectTab('health');
+            } else if (onOpenPhyto) {
+              onOpenPhyto();
+            }
+          }}
+          className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+            !isAnalysisCollapsed && activeTab === 'health'
+              ? 'text-rose-400 font-bold'
+              : isLight
+              ? 'text-slate-600 hover:text-slate-900'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <div className="relative">
+            <ShieldAlert className="w-5 h-5 mb-0.5 text-rose-400" />
+            {activeAnomaliesCount > 0 && (
+              <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-red-500 border border-slate-900 animate-pulse" />
+            )}
+          </div>
+          <span className="text-[10px] tracking-tight font-semibold">
+            {lang === 'en' ? 'Alerts & Risk' : 'Alertas & Risco'}
+          </span>
         </button>
       </nav>
 
@@ -337,6 +364,29 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
                     <div className="font-bold text-xs">{t.pdfReport}</div>
                     <div className="text-[10px] text-slate-400">
                       {lang === 'en' ? 'Official 2-page A4 audit' : 'Certificado oficial A4'}
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {/* Consolidated Farm PDF */}
+              {onExportConsolidatedPdf && (
+                <button
+                  onClick={() => {
+                    setIsMoreDrawerOpen(false);
+                    onExportConsolidatedPdf();
+                  }}
+                  className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all col-span-2 ${
+                    isLight
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-950 hover:bg-emerald-100'
+                      : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200 hover:bg-emerald-950/60'
+                  }`}
+                >
+                  <FileText className="w-5 h-5 text-emerald-400 mb-2" />
+                  <div>
+                    <div className="font-bold text-xs">{lang === 'en' ? 'Consolidated Estate PDF (1-Click)' : 'Relatório Consolidado da Herdade (1-Click)'}</div>
+                    <div className="text-[10px] text-emerald-400/80">
+                      {lang === 'en' ? 'Multi-parcel executive audit for banks & IFAP' : 'Auditoria multi-parcelar executiva'}
                     </div>
                   </div>
                 </button>

@@ -186,6 +186,7 @@ export const ScoutingModal: React.FC<ScoutingModalProps> = ({
             <input
               type="file"
               accept="image/*"
+              capture="environment"
               onChange={handlePhotoChange}
               className="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-emerald-400 hover:file:bg-slate-700 cursor-pointer"
             />

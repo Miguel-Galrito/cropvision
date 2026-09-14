@@ -46,6 +46,7 @@ import {
 } from '../lib/irrigation/fao56';
 import { fetchAgroClimate } from '../lib/weather/openMeteo';
 import { generateAgronomicPdfReport } from '../lib/report/pdfReport';
+import { generateConsolidatedFarmPdf } from '../lib/report/consolidatedFarmPdf';
 import { Language, translations } from '../lib/i18n';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
@@ -565,6 +566,16 @@ export default function DashboardPage() {
     });
   };
 
+  const handleExportConsolidatedPdf = async () => {
+    const currentFarm = farms.find((f) => f.id === activeFarmId) || farms[0];
+    if (!currentFarm) return;
+    try {
+      await generateConsolidatedFarmPdf(currentFarm, lang);
+    } catch (err) {
+      console.error('Failed to generate consolidated farm PDF:', err);
+    }
+  };
+
   const activeFarm = farms.find((f) => f.id === activeFarmId) || farms[0];
 
   return (
@@ -600,6 +611,7 @@ export default function DashboardPage() {
         onOpenRoi={() => setIsRoiModalOpen(true)}
         onShareAudit={handleShareAudit}
         onExportPdf={handleExportPdf}
+        onExportConsolidatedPdf={handleExportConsolidatedPdf}
         activeAnomaliesCount={3}
       />
 
@@ -807,6 +819,7 @@ export default function DashboardPage() {
         parcelName={activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1')}
         farmName={activeFarm?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo')}
         currentNdvi={analysisData?.ndvi?.mean || 0.74}
+        currentNdwi={analysisData?.multi_indices?.ndwi ?? 0.18}
         timeseries={timeseriesData}
         coordinates={{ lat, lon }}
         lang={lang}
@@ -836,6 +849,14 @@ export default function DashboardPage() {
         theme={theme}
         isAnalysisOpen={!!analysisData}
         isAnalysisCollapsed={isAnalysisCollapsed}
+        activeTab={analysisTab}
+        onSelectTab={(tab) => {
+          setAnalysisTab(tab);
+          setIsAnalysisCollapsed(false);
+          if (!analysisData && activeParcel) {
+            runAnalysis(lat, lon, activeParcel.areaHectares);
+          }
+        }}
         onToggleAnalysis={() => {
           if (!analysisData && activeParcel) {
             runAnalysis(lat, lon, activeParcel.areaHectares);
@@ -862,6 +883,7 @@ export default function DashboardPage() {
         onOpenRoi={() => setIsRoiModalOpen(true)}
         onShareAudit={handleShareAudit}
         onExportPdf={handleExportPdf}
+        onExportConsolidatedPdf={handleExportConsolidatedPdf}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenPricing={() => {
           setPricingReason('generic');

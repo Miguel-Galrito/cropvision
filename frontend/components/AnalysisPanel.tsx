@@ -5,6 +5,7 @@ import {
   AnalyzeResponse,
   TimeSeriesPoint,
   TractorPrescriptionMap,
+  PrescriptionZone,
 } from '../lib/types';
 import {
   Download,
@@ -151,16 +152,82 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
     };
   }, [data.coordinates?.lat, data.coordinates?.lon]);
 
-  // Recalculate dynamic prescription map
+  // Nitrates Directive & PAC Compliance State (Portaria n.º 259/2012 / 170 kg N/ha legal ceiling)
+  const [isNitratesZoneActive, setIsNitratesZoneActive] = useState<boolean>(false);
+  const [isNitratesAdjusted, setIsNitratesAdjusted] = useState<boolean>(false);
+  const [baseTargetNRate, setBaseTargetNRate] = useState<number>(185);
+
+  // Recalculate dynamic prescription map with Nitrates Directive enforcement
   const activePrescription: TractorPrescriptionMap = useMemo(() => {
-    return generateTractorPrescriptionMap(
+    const rawMap = generateTractorPrescriptionMap(
       parcelName || data.location_name || 'Talhão Agrícola',
       data.ndvi.mean,
       data.polygon_area_hectares || 28.5,
       selectedFertilizer,
       fertilizerPriceTon
     );
-  }, [data, selectedFertilizer, fertilizerPriceTon, parcelName]);
+
+    // Apply baseline target rate (185 kg N/ha by default)
+    let rateA = Math.round(baseTargetNRate * 0.6);
+    let rateB = baseTargetNRate;
+    let rateC = Math.round(baseTargetNRate * 0.72);
+
+    // If Nitrates Zone is active and Adjusted to Legal Limit (Portaria n.º 259/2012 cap 170 kg N/ha)
+    if (isNitratesZoneActive && isNitratesAdjusted && rateB > 170) {
+      const factor = 170 / rateB;
+      rateA = Math.round(rateA * factor);
+      rateB = 170;
+      rateC = Math.round(rateC * factor);
+    }
+
+    const haA = rawMap.zones[0]?.estimated_hectares || (data.polygon_area_hectares || 28.5) * 0.35;
+    const haB = rawMap.zones[1]?.estimated_hectares || (data.polygon_area_hectares || 28.5) * 0.45;
+    const haC = rawMap.zones[2]?.estimated_hectares || (data.polygon_area_hectares || 28.5) * 0.2;
+
+    const totalVarKg = Math.round(haA * rateA + haB * rateB + haC * rateC);
+    const baselineFlatKg = Math.round(baseTargetNRate * (data.polygon_area_hectares || 28.5));
+    const nSavedKg = Math.max(0, baselineFlatKg - totalVarKg);
+    const fert = FERTILIZER_DATABASE.find((f) => f.id === selectedFertilizer) || FERTILIZER_DATABASE[0];
+    const eurPerKgPureN = (fertilizerPriceTon / 1000) / (fert.nitrogen_content_pct / 100);
+    const eurSavings = Math.round(nSavedKg * eurPerKgPureN);
+    const co2Mitigated = Math.round(nSavedKg * 5.5);
+
+    const zones: PrescriptionZone[] = [
+      {
+        ...rawMap.zones[0],
+        target_n_rate_kg_ha: rateA,
+      },
+      {
+        ...rawMap.zones[1],
+        target_n_rate_kg_ha: rateB,
+      },
+      {
+        ...rawMap.zones[2],
+        target_n_rate_kg_ha: rateC,
+      },
+    ];
+
+    return {
+      ...rawMap,
+      zones,
+      optimized_variable_n_kg: totalVarKg,
+      baseline_flat_n_kg: baselineFlatKg,
+      nitrogen_saved_kg: nSavedKg,
+      fertilizer_savings_eur: eurSavings,
+      co2_equivalent_mitigated_kg: co2Mitigated,
+    };
+  }, [
+    data,
+    selectedFertilizer,
+    fertilizerPriceTon,
+    parcelName,
+    baseTargetNRate,
+    isNitratesZoneActive,
+    isNitratesAdjusted,
+  ]);
+
+  const maxZoneRate = Math.max(...activePrescription.zones.map((z) => z.target_n_rate_kg_ha));
+  const isNitratesExceeded = maxZoneRate > 170;
 
   // Calculate FAO-56 Irrigation Schedule
   const irrigationSchedule: IrrigationRecommendation = useMemo(() => {
@@ -709,6 +776,121 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {/* NITRATES DIRECTIVE & PAC CEILING CONTROLS (Portaria n.º 259/2012 / 170 kg N/ha) */}
+              <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                {/* Vulnerable Zone Switch */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 pr-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="text-xs font-bold text-slate-200">
+                      {lang === 'en'
+                        ? 'Field in Nitrate Vulnerable Zone (Directive 91/676/EEC)'
+                        : 'Talhão em Zona Vulnerável à Diretiva Nitratos (Portaria nº 259/2012)'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNitratesZoneActive((prev) => !prev);
+                      setIsNitratesAdjusted(false);
+                    }}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      isNitratesZoneActive ? 'bg-emerald-500' : 'bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        isNitratesZoneActive ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Target Baseline N Rate (kg N/ha) */}
+                <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
+                  <span className="text-[11px] text-slate-400">
+                    {lang === 'en' ? 'Target Pure N Rate:' : 'Dose Alvo de Azoto Puro:'}
+                  </span>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="range"
+                      min="80"
+                      max="240"
+                      step="5"
+                      value={baseTargetNRate}
+                      disabled={isNitratesZoneActive && isNitratesAdjusted}
+                      onChange={(e) => {
+                        setBaseTargetNRate(parseInt(e.target.value, 10));
+                        setIsNitratesAdjusted(false);
+                      }}
+                      className="w-24 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 disabled:opacity-50"
+                    />
+                    <span className="font-mono text-emerald-400 font-bold text-xs">
+                      {baseTargetNRate} kg N/ha
+                    </span>
+                  </div>
+                </div>
+
+                {/* Non-compliance Alert Banner (Red) */}
+                {isNitratesZoneActive && isNitratesExceeded && !isNitratesAdjusted && (
+                  <div className="p-3 rounded-xl bg-red-950/70 border border-red-500/80 text-red-200 text-xs space-y-2 animate-in fade-in duration-200">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-bold text-red-200">
+                          {lang === 'en'
+                            ? 'CAP Non-Compliance Warning: Nitrogen dose exceeds legal ceiling of 170 kg N/ha. Risk of subsidy cuts.'
+                            : 'Aviso de Inconformidade PAC: Dose de Azoto excede o teto legal de 170 kg N/ha. Risco de corte em subsídios.'}
+                        </p>
+                        <p className="text-[10px] text-red-300/80 mt-0.5 leading-relaxed">
+                          {lang === 'en'
+                            ? `Current prescribed peak rate is ${maxZoneRate} kg N/ha. Mandatory limit in NVZ is 170 kg N/ha/year.`
+                            : `A dose prescrita atinge ${maxZoneRate} kg N/ha. O teto legal vinculativo em Zonas Vulneráveis é de 170 kg N/ha/ano.`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsNitratesAdjusted(true)}
+                      className="w-full py-2 px-3 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-md shadow-red-600/30 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>
+                        {lang === 'en'
+                          ? 'Automatically Adjust to Legal Limit'
+                          : 'Ajustar Automaticamente ao Limite Legal'}
+                      </span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Compliance Confirmed Banner (Green) */}
+                {isNitratesZoneActive && isNitratesAdjusted && (
+                  <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/70 text-emerald-200 text-xs flex items-center justify-between gap-2 animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <div>
+                        <p className="font-bold text-emerald-300 text-[11px]">
+                          {lang === 'en'
+                            ? 'CAP Compliance Verified: Nitrogen doses capped at ≤170 kg N/ha.'
+                            : 'Conformidade PAC Assegurada: Doses ajustadas ao teto legal de 170 kg N/ha.'}
+                        </p>
+                        <p className="text-[10px] text-emerald-400/80">
+                          {lang === 'en'
+                            ? 'Portaria n.º 259/2012 certified for field book'
+                            : 'Portaria n.º 259/2012 certificada para auditoria oficial IFAP'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsNitratesAdjusted(false)}
+                      className="text-[10px] text-slate-400 hover:text-white underline shrink-0 cursor-pointer"
+                    >
+                      {lang === 'en' ? 'Reset' : 'Reverter'}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* 3 Zones Table */}

@@ -49,6 +49,41 @@ body {
   font-family: inherit;
 }
 
+/* Ensure satellite tiles are permanently visible and transparent drawing layers */
+.leaflet-tile-pane {
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 200 !important;
+}
+
+.leaflet-tile {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.leaflet-overlay-pane {
+  z-index: 400 !important;
+  background: transparent !important;
+}
+
+.leaflet-overlay-pane svg,
+.leaflet-overlay-pane canvas,
+.leaflet-pane > svg,
+.leaflet-pane > canvas {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Precision Crosshair Cursor for Interactive Drawing and Field Scouting */
+.drawing-mode-active,
+.drawing-mode-active .leaflet-container,
+.drawing-mode-active .leaflet-pane,
+.drawing-mode-active .leaflet-grab,
+.drawing-mode-active .leaflet-tile-pane,
+.drawing-mode-active .leaflet-overlay-pane {
+  cursor: crosshair !important;
+}
+
 .custom-pulsing-marker {
   position: relative;
   width: 24px;
