@@ -18,6 +18,7 @@ import {
   Sun,
   Moon,
   PenTool,
+  BookOpen,
 } from 'lucide-react';
 import { FarmModel } from '../lib/gis/parcelStorage';
 import { Language, translations } from '../lib/i18n';
@@ -41,6 +42,7 @@ interface NavbarProps {
   onOpenSettings?: () => void;
   onOpenNotifications?: () => void;
   onExportPdf?: () => void;
+  onOpenFieldBook?: () => void;
   activeAnomaliesCount?: number;
 }
 
@@ -63,6 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSettings,
   onOpenNotifications,
   onExportPdf,
+  onOpenFieldBook,
   activeAnomaliesCount = 3,
 }) => {
   const [isFarmDropdownOpen, setIsFarmDropdownOpen] = useState(false);
@@ -311,6 +314,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             <UploadCloud className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
             <span className="hidden sm:inline">{t.importParcelBtn || t.sigPolygon}</span>
             <span className="sm:hidden">SIG</span>
+          </button>
+        )}
+
+        {/* Digital Field Book Button (DGAV / IFAP) */}
+        {onOpenFieldBook && (
+          <button
+            onClick={onOpenFieldBook}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm ${
+              isLight
+                ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
+                : 'bg-emerald-950/60 hover:bg-emerald-900/80 border-emerald-500/40 text-emerald-300 hover:text-white'
+            }`}
+            title={lang === 'en' ? 'Open Official Digital Field Book (DGAV / IFAP)' : 'Abrir Caderno de Campo Oficial (DGAV / IFAP)'}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="hidden lg:inline">{t.fieldBookBtn}</span>
           </button>
         )}
 

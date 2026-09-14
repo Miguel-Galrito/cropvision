@@ -25,6 +25,12 @@ export interface FarmModel {
   locationLabel: string;
   center: [number, number];
   parcels: ParcelModel[];
+  companyName?: string;
+  taxId?: string;
+  cadastralAddress?: string;
+  agronomistName?: string;
+  agronomistLicense?: string;
+  customLogoUrl?: string;
 }
 
 const FARMS_STORAGE_KEY = 'cropvision_user_farms_v2';
@@ -38,6 +44,11 @@ export function getInitialFarms(): FarmModel[] {
       name: 'Herdade do Esporão',
       locationLabel: 'Reguengos de Monsaraz, Alentejo',
       center: [38.3842, -7.5519],
+      companyName: 'Finagra, S.A. (Herdade do Esporão)',
+      taxId: 'PT 500 123 456',
+      cadastralAddress: 'Apartado 157, 7200-999 Reguengos de Monsaraz',
+      agronomistName: 'Eng. Agrónomo Miguel Silva',
+      agronomistLicense: 'OE-AGR-49120',
       parcels: [
         {
           id: 'parcel-esporao-1',

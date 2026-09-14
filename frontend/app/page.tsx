@@ -10,6 +10,8 @@ import { ParcelUploader } from '../components/ParcelUploader';
 import { FarmSettingsModal } from '../components/FarmSettingsModal';
 import { NotificationCenterModal } from '../components/NotificationCenterModal';
 import { ScoutingModal } from '../components/ScoutingModal';
+import { FieldBookModal } from '../components/FieldBookModal';
+import { DiseaseRiskAssessment } from '../lib/disease/epidemiology';
 import {
   AnalyzeResponse,
   TimeSeriesPoint,
@@ -196,6 +198,9 @@ export default function DashboardPage() {
   const [isParcelUploaderOpen, setIsParcelUploaderOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
+  const [isFieldBookOpen, setIsFieldBookOpen] = useState<boolean>(false);
+  const [fieldBookPhytoPrefill, setFieldBookPhytoPrefill] = useState<any>(null);
+  const [fieldBookFertPrefill, setFieldBookFertPrefill] = useState<any>(null);
   const [isPricingOpen, setIsPricingOpen] = useState<boolean>(false);
   const [pricingReason, setPricingReason] = useState<'limit_reached' | 'pdf_unlock' | 'vra_unlock' | 'generic'>('generic');
   const [isProSimulated, setIsProSimulated] = useState<boolean>(false);
@@ -406,7 +411,7 @@ export default function DashboardPage() {
     setIsDrawingModeActive(false);
   };
 
-  // Save Farm Settings
+  // Save Farm Settings & White-Label Profile
   const handleSaveSettings = (updated: {
     farmName: string;
     parcelName: string;
@@ -415,6 +420,10 @@ export default function DashboardPage() {
     irrigationType: IrrigationType;
     agronomistName: string;
     licenseNumber: string;
+    companyName?: string;
+    taxId?: string;
+    cadastralAddress?: string;
+    customLogoUrl?: string;
   }) => {
     setCropType(updated.cropType);
     setTrainingSystem(updated.trainingSystem);
@@ -427,6 +436,12 @@ export default function DashboardPage() {
         return {
           ...f,
           name: updated.farmName,
+          companyName: updated.companyName,
+          taxId: updated.taxId,
+          cadastralAddress: updated.cadastralAddress,
+          customLogoUrl: updated.customLogoUrl,
+          agronomistName: updated.agronomistName,
+          agronomistLicense: updated.licenseNumber,
           parcels: f.parcels.map((p) => {
             if (p.id === activeParcel?.id) {
               return {
@@ -476,13 +491,19 @@ export default function DashboardPage() {
       // Ignore if offline
     }
 
+    const currentFarm = farms.find((f) => f.id === activeFarmId) || farms[0];
+
     await generateAgronomicPdfReport({
       analysisData,
       prescription,
       irrigation,
       scoutingRecords,
-      farmName: farms.find((f) => f.id === activeFarmId)?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo'),
+      farmName: currentFarm?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo'),
       parcelName: activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1'),
+      companyName: currentFarm?.companyName,
+      taxId: currentFarm?.taxId,
+      cadastralAddress: currentFarm?.cadastralAddress,
+      customLogoUrl: currentFarm?.customLogoUrl,
       cropName: irrigation.crop.name,
       trainingSystem:
         trainingSystem === 'superintensivo'
@@ -534,6 +555,7 @@ export default function DashboardPage() {
         onOpenParcelUploader={() => setIsParcelUploaderOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
+        onOpenFieldBook={() => setIsFieldBookOpen(true)}
         onExportPdf={handleExportPdf}
         activeAnomaliesCount={3}
       />
@@ -605,6 +627,22 @@ export default function DashboardPage() {
           onOpenScoutingAtCoord={(scoutLat, scoutLon) => {
             setScoutingModalCoord({ lat: scoutLat, lon: scoutLon });
           }}
+          onLogTreatmentToFieldBook={(disease) => {
+            setFieldBookPhytoPrefill({
+              commercialProduct: disease.recommendedActiveIngredients[0]
+                ? `Tratamento ${disease.name.split(' ')[0]}`
+                : 'Fungicida Homologado',
+              homologationNumber: 'APV n.º 3624',
+              activeSubstance: disease.recommendedActiveIngredients.join(', '),
+              targetOrganism: `${disease.name} (${disease.scientificName})`,
+              dose: 2.0,
+              unit: 'kg/ha',
+              sprayVolumeLHa: 400,
+              safetyIntervalDays: 14,
+              operatorNotes: `Aplicação recomendada pelo Modelo Epidemiológico CropVision (Índice de Risco: ${disease.riskScore}% - ${disease.statusLabel}). ${disease.sprayRecommendation}`,
+            });
+            setIsFieldBookOpen(true);
+          }}
         />
       )}
 
@@ -619,11 +657,12 @@ export default function DashboardPage() {
         onSelectParcel={handleCustomParcelLoaded}
       />
 
-      {/* Farm & Agronomic Settings Modal */}
+      {/* Farm & Agronomic Settings Modal (with White-Labeling Profile) */}
       <FarmSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         lang={lang}
+        theme={theme}
         onLanguageChange={handleLanguageChange}
         isWebSummitMode={isWebSummitMode}
         onToggleWebSummitMode={handleToggleWebSummitMode}
@@ -634,7 +673,44 @@ export default function DashboardPage() {
         irrigationType={irrigationType}
         agronomistName={agronomistName}
         licenseNumber={licenseNumber}
+        companyName={activeFarm?.companyName}
+        taxId={activeFarm?.taxId}
+        cadastralAddress={activeFarm?.cadastralAddress}
+        customLogoUrl={activeFarm?.customLogoUrl}
         onSave={handleSaveSettings}
+      />
+
+      {/* Official Digital Field Book Modal (DGAV / IFAP / PAC 2023-2027) */}
+      <FieldBookModal
+        isOpen={isFieldBookOpen}
+        onClose={() => {
+          setIsFieldBookOpen(false);
+          setFieldBookPhytoPrefill(null);
+          setFieldBookFertPrefill(null);
+        }}
+        farmName={activeFarm?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo')}
+        parcelName={activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1')}
+        cropName={
+          cropType === 'vinha'
+            ? lang === 'en' ? 'Vineyard' : 'Vinha (Aragonez)'
+            : cropType === 'olival'
+            ? lang === 'en' ? 'Olive Grove' : 'Olival (Cobrançosa)'
+            : cropType === 'amendoal'
+            ? lang === 'en' ? 'Almond Grove' : 'Amendoal'
+            : cropType === 'milho'
+            ? lang === 'en' ? 'Corn' : 'Milho'
+            : lang === 'en' ? 'Pasture' : 'Pradaria'
+        }
+        companyName={activeFarm?.companyName}
+        taxId={activeFarm?.taxId}
+        cadastralAddress={activeFarm?.cadastralAddress}
+        agronomistName={agronomistName}
+        licenseNumber={licenseNumber}
+        customLogoUrl={activeFarm?.customLogoUrl}
+        lang={lang}
+        theme={theme}
+        initialPhytoPrefill={fieldBookPhytoPrefill}
+        initialFertPrefill={fieldBookFertPrefill}
       />
 
       {/* Notification Center Modal */}

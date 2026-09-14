@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { CropType, IrrigationType, TrainingSystem } from '../lib/irrigation/fao56';
 import { Language, translations } from '../lib/i18n';
+import { Upload, Image as ImageIcon, Trash2, Building2 } from 'lucide-react';
 
 interface FarmSettingsModalProps {
   isOpen: boolean;
@@ -28,6 +29,11 @@ interface FarmSettingsModalProps {
   irrigationType: IrrigationType;
   agronomistName: string;
   licenseNumber: string;
+  companyName?: string;
+  taxId?: string;
+  cadastralAddress?: string;
+  customLogoUrl?: string;
+  theme?: 'dark' | 'light';
   onSave: (updated: {
     farmName: string;
     parcelName: string;
@@ -36,6 +42,10 @@ interface FarmSettingsModalProps {
     irrigationType: IrrigationType;
     agronomistName: string;
     licenseNumber: string;
+    companyName?: string;
+    taxId?: string;
+    cadastralAddress?: string;
+    customLogoUrl?: string;
   }) => void;
 }
 
@@ -53,8 +63,17 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
   irrigationType,
   agronomistName,
   licenseNumber,
+  companyName = 'Finagra, S.A. (Herdade do Esporão)',
+  taxId = 'PT 500 123 456',
+  cadastralAddress = 'Apartado 157, 7200-999 Reguengos de Monsaraz',
+  customLogoUrl,
+  theme = 'dark',
   onSave,
 }) => {
+  const isLight = theme === 'light';
+  const isEn = lang === 'en';
+  const t = translations[lang] || translations.pt;
+
   const [fName, setFName] = useState(farmName);
   const [pName, setPName] = useState(parcelName);
   const [cType, setCType] = useState<CropType>(cropType);
@@ -63,7 +82,34 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
   const [agroName, setAgroName] = useState(agronomistName || 'Eng. Agrónomo Miguel Silva');
   const [licNum, setLicNum] = useState(licenseNumber || 'OE-AGR-49120');
 
-  const t = translations[lang] || translations.pt;
+  // White-Labeling Fields
+  const [compName, setCompName] = useState(companyName);
+  const [tId, setTId] = useState(taxId);
+  const [cadAddr, setCadAddr] = useState(cadastralAddress);
+  const [logoPreview, setLogoPreview] = useState<string | undefined>(customLogoUrl);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size < 2MB
+    if (file.size > 2 * 1024 * 1024) {
+      alert(isEn ? 'Logo must be smaller than 2MB' : 'O ficheiro de logótipo tem de ser inferior a 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setLogoPreview(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoPreview(undefined);
+  };
 
   if (!isOpen) return null;
 
@@ -77,6 +123,10 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
       irrigationType: iType,
       agronomistName: agroName,
       licenseNumber: licNum,
+      companyName: compName,
+      taxId: tId,
+      cadastralAddress: cadAddr,
+      customLogoUrl: logoPreview,
     });
     onClose();
   };
@@ -266,8 +316,106 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
             </div>
           </div>
 
+          {/* Corporate White-Labeling & Client Identity */}
+          <div className="pt-3 border-t border-slate-800">
+            <h4 className="text-xs font-bold text-slate-200 mb-2 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isEn ? 'Corporate Identity & White-Labeling' : 'Identidade Institucional & White-Labeling'}</span>
+            </h4>
+
+            {/* Custom Logo Upload & Preview */}
+            <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2 mb-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{isEn ? 'Estate / Corporate Logo (PDF Header)' : 'Logótipo da Exploração / Empresa (Cabeçalho PDF)'}</span>
+                </label>
+                {logoPreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>{isEn ? 'Remove Logo' : 'Remover'}</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                {logoPreview ? (
+                  <div className="h-12 w-28 rounded-xl bg-white p-1 flex items-center justify-center border border-slate-700 overflow-hidden shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={logoPreview} alt="Logo Preview" className="max-h-full max-w-full object-contain" />
+                  </div>
+                ) : (
+                  <div className="h-12 w-28 rounded-xl bg-slate-950 border border-dashed border-slate-700 flex items-center justify-center text-slate-500 text-[10px] text-center p-1 shrink-0">
+                    {isEn ? 'No custom logo' : 'Sem logótipo'}
+                  </div>
+                )}
+
+                <div className="flex-1">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors">
+                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{isEn ? 'Upload PNG/JPG' : 'Carregar Imagem'}</span>
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      className="hidden"
+                      onChange={handleLogoUpload}
+                    />
+                  </label>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {isEn ? 'Max 2MB. Injected dynamically into technical audit reports.' : 'Máx 2MB. Injetado dinamicamente no topo dos relatórios de auditoria.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Fiscal and Cadastral Inputs */}
+            <div className="grid grid-cols-2 gap-3 mb-2">
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">
+                  {isEn ? 'Legal Company / Farm Name' : 'Razão Social / Entidade Exploradora'}
+                </label>
+                <input
+                  type="text"
+                  value={compName}
+                  onChange={(e) => setCompName(e.target.value)}
+                  placeholder="Ex: Finagra, S.A."
+                  className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">
+                  {isEn ? 'Tax ID / NIF' : 'NIF / Nº Contribuinte'}
+                </label>
+                <input
+                  type="text"
+                  value={tId}
+                  onChange={(e) => setTId(e.target.value)}
+                  placeholder="Ex: PT 500 123 456"
+                  className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] text-slate-400 mb-1">
+                {isEn ? 'Cadastral Registered Address' : 'Morada Cadastral / Sede da Exploração'}
+              </label>
+              <input
+                type="text"
+                value={cadAddr}
+                onChange={(e) => setCadAddr(e.target.value)}
+                placeholder="Ex: Apartado 157, 7200-999 Reguengos de Monsaraz"
+                className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
           {/* Technical Sign-off for PDF */}
-          <div className="pt-2 border-t border-slate-800">
+          <div className="pt-3 border-t border-slate-800">
             <h4 className="text-xs font-bold text-slate-300 mb-2 flex items-center gap-1.5">
               <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>{t.techSignoffTitle}</span>

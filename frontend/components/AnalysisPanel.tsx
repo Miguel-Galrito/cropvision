@@ -49,6 +49,8 @@ import {
   TrainingSystem,
 } from '../lib/irrigation/fao56';
 import { Language, translations } from '../lib/i18n';
+import { DiseaseRiskWidget } from './DiseaseRiskWidget';
+import { DiseaseRiskAssessment } from '../lib/disease/epidemiology';
 
 interface AnalysisPanelProps {
   data: AnalyzeResponse;
@@ -64,6 +66,7 @@ interface AnalysisPanelProps {
   onRequirePro?: (reason: string) => void;
   onExportPdf?: () => void;
   onOpenScoutingAtCoord?: (lat: number, lon: number) => void;
+  onLogTreatmentToFieldBook?: (disease: DiseaseRiskAssessment) => void;
   onClose?: () => void;
 }
 
@@ -81,9 +84,10 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   onRequirePro,
   onExportPdf,
   onOpenScoutingAtCoord,
+  onLogTreatmentToFieldBook,
   onClose,
 }) => {
-  const [modeTab, setModeTab] = useState<'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate'>('optical');
+  const [modeTab, setModeTab] = useState<'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health'>('optical');
   const [spectralIndex, setSpectralIndex] = useState<'ndvi' | 'ndre' | 'ndwi' | 'evi' | 'msavi'>('ndvi');
   const [selectedFertilizer, setSelectedFertilizer] = useState<string>('can-27');
   const [fertilizerPriceTon, setFertilizerPriceTon] = useState<number>(390);
@@ -368,10 +372,10 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           )}
 
           {/* TAB SELECTOR DOCK */}
-          <div className="grid grid-cols-5 p-1 rounded-2xl bg-slate-900/80 border border-slate-800 text-[11px] font-bold text-center">
+          <div className="grid grid-cols-6 p-1 rounded-2xl bg-slate-900/80 border border-slate-800 text-[10px] font-bold text-center gap-0.5">
             <button
               onClick={() => setModeTab('optical')}
-              className={`py-1.5 rounded-xl transition-all ${
+              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
                 modeTab === 'optical'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white'
@@ -381,7 +385,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
             <button
               onClick={() => setModeTab('sar')}
-              className={`py-1.5 rounded-xl transition-all ${
+              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
                 modeTab === 'sar'
                   ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30'
                   : 'text-slate-400 hover:text-white'
@@ -391,7 +395,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
             <button
               onClick={() => setModeTab('prescription')}
-              className={`py-1.5 rounded-xl transition-all ${
+              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
                 modeTab === 'prescription'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                   : 'text-slate-400 hover:text-white'
@@ -401,7 +405,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
             <button
               onClick={() => setModeTab('irrigation')}
-              className={`py-1.5 rounded-xl transition-all ${
+              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
                 modeTab === 'irrigation'
                   ? 'bg-teal-600 text-white shadow-md shadow-teal-600/30'
                   : 'text-slate-400 hover:text-white'
@@ -411,13 +415,23 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
             <button
               onClick={() => setModeTab('climate')}
-              className={`py-1.5 rounded-xl transition-all ${
+              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
                 modeTab === 'climate'
                   ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
               {t.tabClimate}
+            </button>
+            <button
+              onClick={() => setModeTab('health')}
+              className={`py-1.5 rounded-xl transition-all truncate px-1 ${
+                modeTab === 'health'
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {t.tabHealth}
             </button>
           </div>
 
@@ -798,6 +812,21 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB 6: PHYTOSANITARY & EPIDEMIOLOGICAL DISEASE RISK */}
+          {modeTab === 'health' && (
+            <div className="space-y-3.5 animate-in fade-in duration-150">
+              <DiseaseRiskWidget
+                cropType={cropType}
+                currentTempC={agroClimate?.currentTempC ?? 22.0}
+                currentHumidityPct={agroClimate?.currentHumidityPct ?? 65}
+                hourlyForecast={agroClimate?.hourlyForecast || []}
+                lang={lang}
+                theme={theme}
+                onLogTreatment={onLogTreatmentToFieldBook}
+              />
             </div>
           )}
         </div>

@@ -28,6 +28,10 @@ export interface ReportConfig {
   irrigationType: string;
   agronomistName?: string;
   licenseNumber?: string;
+  companyName?: string;
+  taxId?: string;
+  cadastralAddress?: string;
+  customLogoUrl?: string;
   polygon?: [number, number][] | null;
   mapSnapshotDataUrl?: string;
   agroClimate?: AgroClimateData | null;
@@ -147,29 +151,74 @@ export async function generateAgronomicPdfReport(config: ReportConfig): Promise<
     22
   );
 
-  // Top-Right Metadata Block
-  doc.setFontSize(6.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(156, 163, 175);
-  doc.text(
-    isEn ? `Date of Issue: ${todayStr}` : `Data de Emissão: ${todayStr}`,
-    pageWidth - marginX,
-    11,
-    { align: 'right' }
-  );
-  doc.text(
-    isEn ? 'Standard: ISO 11783-10 / EU 91/676/EEC' : 'Norma: ISO 11783-10 / UE 91/676/CEE',
-    pageWidth - marginX,
-    16,
-    { align: 'right' }
-  );
-  doc.setTextColor(52, 211, 153);
-  doc.text(
-    `AUDIT HASH: ${auditHashDisplay}`,
-    pageWidth - marginX,
-    21,
-    { align: 'right' }
-  );
+  // Top-Right Metadata / Logo Block
+  if (config.customLogoUrl) {
+    try {
+      doc.addImage(config.customLogoUrl, 'PNG', pageWidth - marginX - 32, 3.5, 30, 16, undefined, 'FAST');
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(156, 163, 175);
+      doc.text(
+        `${isEn ? 'Date:' : 'Data:'} ${todayStr}`,
+        pageWidth - marginX - 36,
+        13,
+        { align: 'right' }
+      );
+      doc.setTextColor(52, 211, 153);
+      doc.text(
+        `HASH: ${auditHashDisplay.slice(0, 14)}...`,
+        pageWidth - marginX - 36,
+        18,
+        { align: 'right' }
+      );
+    } catch {
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(156, 163, 175);
+      doc.text(
+        isEn ? `Date of Issue: ${todayStr}` : `Data de Emissão: ${todayStr}`,
+        pageWidth - marginX,
+        11,
+        { align: 'right' }
+      );
+      doc.text(
+        isEn ? 'Standard: ISO 11783-10 / EU 91/676/EEC' : 'Norma: ISO 11783-10 / UE 91/676/CEE',
+        pageWidth - marginX,
+        16,
+        { align: 'right' }
+      );
+      doc.setTextColor(52, 211, 153);
+      doc.text(
+        `AUDIT HASH: ${auditHashDisplay}`,
+        pageWidth - marginX,
+        21,
+        { align: 'right' }
+      );
+    }
+  } else {
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(156, 163, 175);
+    doc.text(
+      isEn ? `Date of Issue: ${todayStr}` : `Data de Emissão: ${todayStr}`,
+      pageWidth - marginX,
+      11,
+      { align: 'right' }
+    );
+    doc.text(
+      isEn ? 'Standard: ISO 11783-10 / EU 91/676/EEC' : 'Norma: ISO 11783-10 / UE 91/676/CEE',
+      pageWidth - marginX,
+      16,
+      { align: 'right' }
+    );
+    doc.setTextColor(52, 211, 153);
+    doc.text(
+      `AUDIT HASH: ${auditHashDisplay}`,
+      pageWidth - marginX,
+      21,
+      { align: 'right' }
+    );
+  }
 
   let cursorY = 32;
 
@@ -186,24 +235,24 @@ export async function generateAgronomicPdfReport(config: ReportConfig): Promise<
 
   const metadataRows = [
     [
-      { content: isEn ? 'Farm / Estate:' : 'Exploração / Herdade:', styles: { fontStyle: 'bold' as const } },
-      config.farmName,
-      { content: isEn ? 'Field / Parcel:' : 'Talhão / Parcela:', styles: { fontStyle: 'bold' as const } },
-      config.parcelName,
+      { content: isEn ? 'Farm / Entity:' : 'Exploração / Entidade:', styles: { fontStyle: 'bold' as const } },
+      config.companyName ? `${config.farmName} (${config.companyName})` : config.farmName,
+      { content: isEn ? 'Tax ID / NIF:' : 'NIF / Contribuinte:', styles: { fontStyle: 'bold' as const } },
+      config.taxId || 'PT 500 123 456',
       { content: isEn ? 'Cadastral Area:' : 'Área Cadastrada:', styles: { fontStyle: 'bold' as const } },
       `${config.prescription.total_area_hectares.toFixed(1)} ha`,
     ],
     [
+      { content: isEn ? 'Field / Parcel:' : 'Talhão / Parcela:', styles: { fontStyle: 'bold' as const } },
+      config.parcelName,
       { content: isEn ? 'WGS84 Centroid:' : 'Coordenadas WGS84:', styles: { fontStyle: 'bold' as const } },
       `${config.analysisData.coordinates.lat.toFixed(5)}° N, ${config.analysisData.coordinates.lon.toFixed(5)}° W`,
       { content: isEn ? 'Crop Installed:' : 'Cultura Instalada:', styles: { fontStyle: 'bold' as const } },
       config.cropName,
-      { content: isEn ? 'Training System:' : 'Condução:', styles: { fontStyle: 'bold' as const } },
-      config.trainingSystem,
     ],
     [
-      { content: isEn ? 'Irrigation Method:' : 'Método de Rega:', styles: { fontStyle: 'bold' as const } },
-      config.irrigationType,
+      { content: isEn ? 'Training / Irrigation:' : 'Condução / Rega:', styles: { fontStyle: 'bold' as const } },
+      `${config.trainingSystem} | ${config.irrigationType}`,
       { content: isEn ? 'Sentinel Overpass:' : 'Passagem Satélite:', styles: { fontStyle: 'bold' as const } },
       config.analysisData.acquisition_date,
       { content: isEn ? 'Cloud Coverage:' : 'Cobertura Nuvens:', styles: { fontStyle: 'bold' as const } },
@@ -659,55 +708,57 @@ export async function generateAgronomicPdfReport(config: ReportConfig): Promise<
 
   doc.text(legalText, marginX + 4, cursorY + 10.5);
 
-  // Side-by-Side Signature Boxes
-  const boxWidth = (contentWidth - 12) / 2; // 85mm each
-  const boxY = cursorY + 18;
+  // Signature & Official Stamp Blocks (3-Column Layout: Entity | Agronomist | Digital Stamp)
   const boxHeight = 32;
+  const col1Width = 62;
+  const col2Width = 62;
+  const stampBoxWidth = 52;
+  const boxY = cursorY + 18;
 
   // Box 1: Farm Operating Entity (Left)
   doc.setFillColor(255, 255, 255);
   doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(marginX + 3, boxY, boxWidth, boxHeight, 1.5, 1.5, 'FD');
+  doc.roundedRect(marginX, boxY, col1Width, boxHeight, 1.5, 1.5, 'FD');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   doc.setTextColor(15, 23, 42);
   doc.text(
-    isEn ? 'FARM OPERATING ENTITY / BENEFICIARY' : 'ENTIDADE EXPLORADORA / BENEFICIÁRIO',
-    marginX + 6,
+    isEn ? 'OPERATING ENTITY / BENEFICIARY' : 'ENTIDADE EXPLORADORA / BENEFICIÁRIO',
+    marginX + 4,
     boxY + 4.5
   );
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(100, 116, 139);
-  doc.text(`${isEn ? 'Farm:' : 'Exploração:'} ${config.farmName}`, marginX + 6, boxY + 8.5);
-  doc.text(`${isEn ? 'Representative:' : 'Responsável:'} Gerência / Direção de Operações`, marginX + 6, boxY + 12.5);
+  doc.text(`${isEn ? 'Entity:' : 'Entidade:'} ${config.companyName || config.farmName}`, marginX + 4, boxY + 8.5);
+  doc.text(`NIF: ${config.taxId || 'PT 500 123 456'}`, marginX + 4, boxY + 12.5);
 
   // Signature line left
   doc.setDrawColor(148, 163, 184);
   doc.setLineWidth(0.3);
-  doc.line(marginX + 8, boxY + 24, marginX + boxWidth - 8, boxY + 24);
+  doc.line(marginX + 5, boxY + 23, marginX + col1Width - 5, boxY + 23);
 
-  doc.setFontSize(5.5);
+  doc.setFontSize(5);
   doc.text(
     isEn ? 'Date: _____/_____/2026 | Signature & Stamp' : 'Data: _____/_____/2026 | Assinatura e Carimbo',
-    marginX + 8,
-    boxY + 28
+    marginX + 5,
+    boxY + 27
   );
 
-  // Box 2: Certified Technical Agronomist (Right)
-  const rightBoxX = marginX + 3 + boxWidth + 6;
+  // Box 2: Certified Technical Agronomist (Center)
+  const col2X = marginX + col1Width + 3;
   doc.setFillColor(255, 255, 255);
   doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(rightBoxX, boxY, boxWidth, boxHeight, 1.5, 1.5, 'FD');
+  doc.roundedRect(col2X, boxY, col2Width, boxHeight, 1.5, 1.5, 'FD');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   doc.setTextColor(15, 23, 42);
   doc.text(
-    isEn ? 'CERTIFIED TECHNICAL AGRONOMIST' : 'CORPO TÉCNICO AGRONÓMICO CERTIFICADO',
-    rightBoxX + 3,
+    isEn ? 'CERTIFIED TECHNICAL AGRONOMIST' : 'RESPONSÁVEL TÉCNICO CERTIFICADO',
+    col2X + 4,
     boxY + 4.5
   );
 
@@ -716,26 +767,66 @@ export async function generateAgronomicPdfReport(config: ReportConfig): Promise<
   doc.setTextColor(100, 116, 139);
   doc.text(
     `${isEn ? 'Agronomist:' : 'Agrónomo:'} ${config.agronomistName || 'Eng. Agrónomo Miguel Silva'}`,
-    rightBoxX + 3,
+    col2X + 4,
     boxY + 8.5
   );
   doc.text(
-    `${isEn ? 'Professional License:' : 'Cédula Profissional:'} ${config.licenseNumber || 'OE-AGR-49120'}`,
-    rightBoxX + 3,
+    `${isEn ? 'License:' : 'Cédula:'} ${config.licenseNumber || 'OE-AGR-49120'}`,
+    col2X + 4,
     boxY + 12.5
   );
 
   // Signature line right
   doc.setDrawColor(148, 163, 184);
   doc.setLineWidth(0.3);
-  doc.line(rightBoxX + 5, boxY + 24, rightBoxX + boxWidth - 11, boxY + 24);
+  doc.line(col2X + 5, boxY + 23, col2X + col2Width - 5, boxY + 23);
 
-  doc.setFontSize(5.5);
+  doc.setFontSize(5);
   doc.text(
-    isEn ? 'Date: _____/_____/2026 | Signature & Professional Stamp' : 'Data: _____/_____/2026 | Assinatura & Carimbo Profissional',
-    rightBoxX + 5,
-    boxY + 28
+    isEn ? 'Date: _____/_____/2026 | Signature & Seal' : 'Data: _____/_____/2026 | Assinatura e Cédula',
+    col2X + 5,
+    boxY + 27
   );
+
+  // Box 3: Official Vector Validation Stamp (Right)
+  const stampX = col2X + col2Width + 3;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(stampX, boxY, stampBoxWidth, boxHeight, 1.5, 1.5, 'FD');
+
+  // Draw concentric circular seal
+  const sealCenterX = stampX + stampBoxWidth / 2;
+  const sealCenterY = boxY + 13;
+
+  doc.setDrawColor(16, 185, 129);
+  doc.setLineWidth(0.6);
+  doc.circle(sealCenterX, sealCenterY, 11, 'S');
+
+  doc.setDrawColor(5, 150, 105);
+  doc.setLineWidth(0.25);
+  doc.circle(sealCenterX, sealCenterY, 9.2, 'S');
+
+  // Checkmark inside seal
+  doc.setDrawColor(16, 185, 129);
+  doc.setLineWidth(0.8);
+  doc.line(sealCenterX - 3, sealCenterY, sealCenterX - 0.8, sealCenterY + 2.5);
+  doc.line(sealCenterX - 0.8, sealCenterY + 2.5, sealCenterX + 3.8, sealCenterY - 2.8);
+
+  // Stamp typography
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(4.5);
+  doc.setTextColor(6, 78, 59);
+  doc.text(
+    isEn ? 'EMITIDO E VALIDADO DIGITALMENTE' : 'EMITIDO E VALIDADO DIGITALMENTE',
+    sealCenterX,
+    boxY + 24.5,
+    { align: 'center' }
+  );
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(3.8);
+  doc.setTextColor(100, 116, 139);
+  doc.text('CROPVISION SAAS ENGINE', sealCenterX, boxY + 27, { align: 'center' });
+  doc.text(`HASH: ${fullAuditHash.slice(0, 12)}...`, sealCenterX, boxY + 29.5, { align: 'center' });
 
   // PAGE 2 FIXED FOOTER
   doc.setDrawColor(226, 232, 240);
