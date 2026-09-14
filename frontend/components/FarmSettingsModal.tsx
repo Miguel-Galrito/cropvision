@@ -1,12 +1,26 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings, Save, X, Sprout, Droplets, UserCheck, ShieldCheck } from 'lucide-react';
+import {
+  Settings,
+  Save,
+  X,
+  Sprout,
+  Droplets,
+  UserCheck,
+  Globe,
+  Award,
+} from 'lucide-react';
 import { CropType, IrrigationType, TrainingSystem } from '../lib/irrigation/fao56';
+import { Language, translations } from '../lib/i18n';
 
 interface FarmSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  lang: Language;
+  onLanguageChange: (newLang: Language) => void;
+  isWebSummitMode: boolean;
+  onToggleWebSummitMode: () => void;
   farmName: string;
   parcelName: string;
   cropType: CropType;
@@ -28,6 +42,10 @@ interface FarmSettingsModalProps {
 export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
   isOpen,
   onClose,
+  lang,
+  onLanguageChange,
+  isWebSummitMode,
+  onToggleWebSummitMode,
   farmName,
   parcelName,
   cropType,
@@ -44,6 +62,8 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
   const [iType, setIType] = useState<IrrigationType>(irrigationType);
   const [agroName, setAgroName] = useState(agronomistName || 'Eng. Agrónomo Miguel Silva');
   const [licNum, setLicNum] = useState(licenseNumber || 'OE-AGR-49120');
+
+  const t = translations[lang] || translations.pt;
 
   if (!isOpen) return null;
 
@@ -62,8 +82,9 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200 select-none">
-      <div className="relative w-full max-w-lg rounded-2xl bg-[#0b101b] border border-slate-800 shadow-2xl p-6 text-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 select-none overflow-y-auto">
+      <div className="relative w-full max-w-xl rounded-3xl bg-[#0b101b] border border-slate-800 shadow-2xl p-6 text-slate-200 my-auto">
+        {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center space-x-3">
             <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
@@ -71,10 +92,10 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-white font-mono">
-                DEFINIÇÕES AGRONÓMICAS DA EXPLORAÇÃO
+                {t.settingsTitle}
               </h3>
               <p className="text-xs text-slate-400">
-                Parâmetros biofísicos para calibração de Kc e cálculo VRA
+                {t.settingsSub}
               </p>
             </div>
           </div>
@@ -86,12 +107,90 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4 text-xs">
+          {/* 1. Language & Operating Mode Block (Top Priority) */}
+          <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+            {/* Language Switcher */}
+            <div>
+              <label className="block text-xs font-bold text-slate-200 mb-1.5 flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{t.langSelectLabel}</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onLanguageChange('pt')}
+                  className={`py-2 px-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                    lang === 'pt'
+                      ? 'bg-emerald-600 border-emerald-400 text-white shadow-md shadow-emerald-600/30'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>🇵🇹 Português (PT)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onLanguageChange('en')}
+                  className={`py-2 px-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                    lang === 'en'
+                      ? 'bg-emerald-600 border-emerald-400 text-white shadow-md shadow-emerald-600/30'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>🇬🇧 English (EN)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Operating Mode Switcher */}
+            <div className="pt-2 border-t border-slate-800">
+              <label className="block text-xs font-bold text-slate-200 mb-1.5 flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-amber-400" />
+                <span>{t.modeSelectLabel}</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isWebSummitMode) onToggleWebSummitMode();
+                  }}
+                  className={`p-2 rounded-xl border text-left font-medium transition-all ${
+                    isWebSummitMode
+                      ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300 shadow'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className="font-bold text-xs">{t.modeWebSummitVip}</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    {lang === 'en' ? 'Unlimited demo analyses for pitch' : 'Análises ilimitadas para júri/pitch'}
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isWebSummitMode) onToggleWebSummitMode();
+                  }}
+                  className={`p-2 rounded-xl border text-left font-medium transition-all ${
+                    !isWebSummitMode
+                      ? 'bg-amber-950/80 border-amber-500/60 text-amber-300 shadow'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className="font-bold text-xs">{t.modeStandardQuota}</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    {lang === 'en' ? 'Max 3 uses/day -> Whop Paywall' : 'Máx 3 usos/dia -> Redireciona Whop'}
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Farm and Parcel Identifiers */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Nome da Herdade / Quinta
+                {t.farmNameLabel}
               </label>
               <input
                 type="text"
@@ -103,7 +202,7 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Talhão / Parcela Ativa
+                {t.parcelNameLabel}
               </label>
               <input
                 type="text"
@@ -119,18 +218,18 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
               <Sprout className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Cultura Instalada (Determina Curva Kc e Exigência N)</span>
+              <span>{t.cropLabel}</span>
             </label>
             <select
               value={cType}
               onChange={(e) => setCType(e.target.value as CropType)}
               className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
             >
-              <option value="olival">Olival (Olea europaea)</option>
-              <option value="vinha">Vinha (Vitis vinifera)</option>
-              <option value="amendoal">Amendoal (Prunus dulcis)</option>
-              <option value="milho">Milho Grão/Silagem (Zea mays)</option>
-              <option value="pradaria">Pradaria / Pastagem Permanente</option>
+              <option value="olival">{t.cropOlive}</option>
+              <option value="vinha">{t.cropVineyard}</option>
+              <option value="amendoal">{t.cropAlmond}</option>
+              <option value="milho">{t.cropCorn}</option>
+              <option value="pradaria">{t.cropPasture}</option>
             </select>
           </div>
 
@@ -138,31 +237,31 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Sistema de Condução
+                {t.trainingSystemLabel}
               </label>
               <select
                 value={tSystem}
                 onChange={(e) => setTSystem(e.target.value as TrainingSystem)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
               >
-                <option value="intensivo">Intensivo (ex: 7x5m)</option>
-                <option value="superintensivo">Superintensivo (ex: 4x1.5m)</option>
-                <option value="tradicional">Tradicional / Sequeiro</option>
+                <option value="intensivo">{t.sysIntensive}</option>
+                <option value="superintensivo">{t.sysSuperIntensive}</option>
+                <option value="tradicional">{t.sysTraditional}</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                 <Droplets className="w-3.5 h-3.5 text-sky-400" />
-                <span>Tipo de Rega</span>
+                <span>{t.irrigationTypeLabel}</span>
               </label>
               <select
                 value={iType}
                 onChange={(e) => setIType(e.target.value as IrrigationType)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
               >
-                <option value="gota-a-gota">Gota-a-gota (Drip)</option>
-                <option value="pivot">Pivot Central / Aspersão</option>
-                <option value="sequeiro">Sequeiro (Sem Rega)</option>
+                <option value="gota-a-gota">{t.irrDrip}</option>
+                <option value="pivot">{t.irrPivot}</option>
+                <option value="sequeiro">{t.irrRainfed}</option>
               </select>
             </div>
           </div>
@@ -171,11 +270,11 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
           <div className="pt-2 border-t border-slate-800">
             <h4 className="text-xs font-bold text-slate-300 mb-2 flex items-center gap-1.5">
               <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Responsável Técnico (Para Assinatura nos Relatórios PDF)</span>
+              <span>{t.techSignoffTitle}</span>
             </h4>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Nome do Agrónomo</label>
+                <label className="block text-[11px] text-slate-400 mb-1">{t.agronomistNameLabel}</label>
                 <input
                   type="text"
                   value={agroName}
@@ -184,7 +283,7 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Cédula Profissional</label>
+                <label className="block text-[11px] text-slate-400 mb-1">{t.licenseNumberLabel}</label>
                 <input
                   type="text"
                   value={licNum}
@@ -201,14 +300,14 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition-colors"
             >
-              Cancelar
+              {t.cancel}
             </button>
             <button
               type="submit"
               className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shadow-lg shadow-emerald-600/30"
             >
               <Save className="w-4 h-4" />
-              <span>Guardar Alterações</span>
+              <span>{t.save}</span>
             </button>
           </div>
         </form>

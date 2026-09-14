@@ -14,10 +14,12 @@ import {
 } from 'lucide-react';
 import { parseParcelFile } from '../lib/gis/parcelParser';
 import { PRESET_LOCATIONS } from '../lib/presets';
+import { Language, translations } from '../lib/i18n';
 
 interface ParcelUploaderProps {
   isOpen: boolean;
   onClose: () => void;
+  lang?: Language;
   onSelectParcel: (
     polygon: [number, number][],
     centerLat: number,
@@ -30,12 +32,15 @@ interface ParcelUploaderProps {
 export const ParcelUploader: React.FC<ParcelUploaderProps> = ({
   isOpen,
   onClose,
+  lang = 'pt',
   onSelectParcel,
 }) => {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const t = translations[lang] || translations.pt;
 
   if (!isOpen) return null;
 
@@ -54,7 +59,10 @@ export const ParcelUploader: React.FC<ParcelUploaderProps> = ({
       onClose();
     } catch (err: any) {
       console.error('File import error:', err);
-      setError(err.message || 'Erro ao processar ficheiro de parcela.');
+      setError(
+        err.message ||
+          (lang === 'en' ? 'Error processing field parcel file.' : 'Erro ao processar ficheiro de parcela.')
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -89,7 +97,7 @@ export const ParcelUploader: React.FC<ParcelUploaderProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 select-none">
-      <div className="relative w-full max-w-xl rounded-2xl bg-[#0b101b] border border-slate-800 shadow-2xl p-6 text-slate-200">
+      <div className="relative w-full max-w-xl rounded-3xl bg-[#0b101b] border border-slate-800 shadow-2xl p-6 text-slate-200">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center space-x-3">
@@ -98,13 +106,13 @@ export const ParcelUploader: React.FC<ParcelUploaderProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
-                IMPORTAR LIMITES DE PARCELA (SIG)
+                {t.uploaderTitle}
                 <span className="text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-400">
                   Shapefile / GeoJSON / KML
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Carregue o polígono cadastral para calibrar prescrição VRA e área em hectares
+                {t.uploaderSub}
               </p>
             </div>
           </div>
@@ -140,14 +148,16 @@ export const ParcelUploader: React.FC<ParcelUploaderProps> = ({
             <FileArchive className="w-7 h-7" />
           </div>
           <p className="text-sm font-semibold text-white text-center">
-            {isProcessing ? 'A processar geometria e cálculo de área...' : 'Arraste o seu ficheiro de talhão para aqui'}
+            {isProcessing
+              ? (lang === 'en' ? 'Processing geometry and geodesic area calculation...' : 'A processar geometria e cálculo de área...')
+              : t.dragDropText}
           </p>
           <p className="text-xs text-slate-400 mt-1 text-center">
-            Suporta <span className="text-emerald-300 font-mono">.ZIP</span> contendo Shapefiles (.shp, .shx, .dbf), <span className="text-emerald-300 font-mono">.GEOJSON</span> e <span className="text-emerald-300 font-mono">.KML</span>
+            {t.dragDropSub}
           </p>
           <div className="mt-3 text-[11px] text-slate-500 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Cálculo automático de área em Hectares (ha) e centralização de câmara</span>
+            <span>{t.autoAreaCalc}</span>
           </div>
         </div>
 
@@ -159,11 +169,11 @@ export const ParcelUploader: React.FC<ParcelUploaderProps> = ({
           </div>
         )}
 
-        {/* Quick Presets for Demo */}
+        {/* Quick Presets */}
         <div className="mt-5 pt-4 border-t border-slate-800">
           <p className="text-xs font-semibold text-slate-400 mb-2.5 flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5 text-slate-400" />
-            <span>Ou carregue um exemplo de parcela cadastrada de referência:</span>
+            <span>{t.orLoadPreset}</span>
           </p>
           <div className="grid grid-cols-2 gap-2">
             {PRESET_LOCATIONS.slice(0, 4).map((p) => (
@@ -201,7 +211,7 @@ export const ParcelUploader: React.FC<ParcelUploaderProps> = ({
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white transition-colors"
           >
-            Fechar
+            {t.close}
           </button>
         </div>
       </div>

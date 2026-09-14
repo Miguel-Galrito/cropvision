@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Bell, AlertTriangle, Droplets, Wind, CheckCircle2, X, ShieldAlert } from 'lucide-react';
+import { Language, translations } from '../lib/i18n';
 
 interface NotificationItem {
   id: string;
@@ -15,49 +16,62 @@ interface NotificationItem {
 interface NotificationCenterModalProps {
   isOpen: boolean;
   onClose: () => void;
+  lang?: Language;
   onFocusAnomaly?: () => void;
 }
 
 export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = ({
   isOpen,
   onClose,
+  lang = 'pt',
   onFocusAnomaly,
 }) => {
+  const t = translations[lang] || translations.pt;
+
   if (!isOpen) return null;
 
   const notifications: NotificationItem[] = [
     {
       id: 'notif-1',
       type: 'critical',
-      title: 'Alerta de Stress Acelerado (Queda ΔNDVI < -0.08)',
-      parcel: 'Talhão 1 - Vinha do Almotrém',
-      time: 'Há 2 horas (Passagem Sentinel-2)',
-      description:
-        'Queda anómala de biomassa detetada em 14% da área. Descartada restrição hídrica por radar SAR Sentinel-1. Suspeita de ataque fitossanitário ou bloqueio nutricional.',
+      title: lang === 'en'
+        ? 'Accelerated Vegetation Stress Alert (ΔNDVI < -0.08)'
+        : 'Alerta de Stress Acelerado (Queda ΔNDVI < -0.08)',
+      parcel: lang === 'en' ? 'Field 1 - Vineyard Sector West' : 'Talhão 1 - Vinha do Almotrém',
+      time: lang === 'en' ? '2 hours ago (Sentinel-2 overpass)' : 'Há 2 horas (Passagem Sentinel-2)',
+      description: lang === 'en'
+        ? 'Abnormal canopy biomass decrease detected in 14% of field. Soil moisture restriction ruled out by Sentinel-1 SAR. Suspected fungal outbreak, pest attack or localized phytotoxicity.'
+        : 'Queda anómala de biomassa detetada em 14% da área. Descartada restrição hídrica por radar SAR Sentinel-1. Suspeita de ataque fitossanitário ou bloqueio nutricional.',
     },
     {
       id: 'notif-2',
       type: 'warning',
-      title: 'Janela de Pulverização: Vento Limite (16 km/h)',
-      parcel: 'Todas as Parcelas',
-      time: 'Previsão para as 15:00',
-      description:
-        'Velocidade do vento aproxima-se do limite de deriva. Recomenda-se antecipar tratamentos fitossanitários para o período da manhã.',
+      title: lang === 'en'
+        ? 'Spraying Window: Wind Speed Warning (16 km/h)'
+        : 'Janela de Pulverização: Vento Limite (16 km/h)',
+      parcel: lang === 'en' ? 'All Monitored Parcels' : 'Todas as Parcelas',
+      time: lang === 'en' ? 'Forecast at 15:00' : 'Previsão para as 15:00',
+      description: lang === 'en'
+        ? 'Wind gusts approaching anti-drift regulatory limits. Advance spraying or fungicide treatments to early morning calm window.'
+        : 'Velocidade do vento aproxima-se do limite de deriva. Recomenda-se antecipar tratamentos fitossanitários para o período da manhã.',
     },
     {
       id: 'notif-3',
       type: 'info',
-      title: 'Balanço Hídrico: Necessidade Diária Calculada',
-      parcel: 'Talhão 2 - Olival dos Arrifes',
-      time: 'Hoje às 06:00',
-      description:
-        'Evapotranspiração de cultura (ETc) estimada em 3.4 mm/dia. Sugestão de rega: 2h 10min no setor gota-a-gota.',
+      title: lang === 'en'
+        ? 'FAO-56 Water Balance: Daily Requirement Computed'
+        : 'Balanço Hídrico: Necessidade Diária Calculada',
+      parcel: lang === 'en' ? 'Field 2 - High-Density Olive Grove' : 'Talhão 2 - Olival dos Arrifes',
+      time: lang === 'en' ? 'Today at 06:00' : 'Hoje às 06:00',
+      description: lang === 'en'
+        ? 'Daily crop evapotranspiration (ETc) estimated at 3.4 mm/day. Recommended drip valve run time: 2h 10min.'
+        : 'Evapotranspiração de cultura (ETc) estimada em 3.4 mm/dia. Sugestão de rega: 2h 10min no setor gota-a-gota.',
     },
   ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200 select-none">
-      <div className="relative w-full max-w-lg rounded-2xl bg-[#0b101b] border border-slate-800 shadow-2xl p-6 text-slate-200">
+      <div className="relative w-full max-w-lg rounded-3xl bg-[#0b101b] border border-slate-800 shadow-2xl p-6 text-slate-200">
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center space-x-3">
             <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
@@ -65,12 +79,12 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             </div>
             <div>
               <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
-                CENTRO DE ALERTAS &amp; TELEMETRIA
+                {t.alertsTitle}
                 <span className="text-[10px] bg-red-950 text-red-400 border border-red-500/40 px-1.5 py-0.5 rounded-full font-sans font-semibold">
-                  3 Ativos
+                  3 {t.activeAlerts}
                 </span>
               </h3>
-              <p className="text-xs text-slate-400">Anomalias e eventos operacionais em tempo real</p>
+              <p className="text-xs text-slate-400">{t.alertsSub}</p>
             </div>
           </div>
           <button
@@ -116,7 +130,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   }}
                   className="mt-2.5 px-3 py-1 rounded-lg bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 text-red-200 text-xs font-semibold transition-colors flex items-center gap-1.5"
                 >
-                  <span>Inspecionar Anomalia no Mapa</span>
+                  <span>{t.inspectOnMap}</span>
                 </button>
               )}
             </div>
@@ -128,7 +142,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white transition-colors"
           >
-            Fechar
+            {t.close}
           </button>
         </div>
       </div>

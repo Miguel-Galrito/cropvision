@@ -5,6 +5,8 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { ScoutingRecord } from '../lib/scouting/scoutingStore';
 
+import { Language } from '../lib/i18n';
+
 interface MapWrapperProps {
   lat: number;
   lon: number;
@@ -18,6 +20,7 @@ interface MapWrapperProps {
   onScoutCoordinateClick?: (lat: number, lon: number) => void;
   onDeleteScoutingRecord?: (id: string) => void;
   onCenterChange?: (centerLat: number, centerLon: number) => void;
+  lang?: Language;
   disabled?: boolean;
 }
 

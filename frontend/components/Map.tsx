@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { ScoutingRecord } from '../lib/scouting/scoutingStore';
+import { Language, translations } from '../lib/i18n';
 
 export type BasemapMode = 'satellite' | 'hybrid' | 'streets';
 export type VisualOverlayMode = 'rgb' | 'ndvi' | 'sar' | 'ndre';
@@ -35,6 +36,7 @@ interface MapProps {
   onScoutCoordinateClick?: (lat: number, lon: number) => void;
   onDeleteScoutingRecord?: (id: string) => void;
   onCenterChange?: (centerLat: number, centerLon: number) => void;
+  lang?: Language;
   disabled?: boolean;
 }
 
@@ -51,7 +53,9 @@ export const Map: React.FC<MapProps> = ({
   onScoutCoordinateClick,
   onDeleteScoutingRecord,
   onCenterChange,
+  lang = 'pt',
 }) => {
+  const t = translations[lang] || translations.pt;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
@@ -377,7 +381,7 @@ export const Map: React.FC<MapProps> = ({
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <span>Satélite HD</span>
+          <span>{t.basemapSat}</span>
         </button>
         <button
           onClick={() => setBasemap('hybrid')}
@@ -387,7 +391,7 @@ export const Map: React.FC<MapProps> = ({
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <span>Híbrido</span>
+          <span>{t.basemapHybrid}</span>
         </button>
         <button
           onClick={() => setBasemap('streets')}
@@ -397,7 +401,7 @@ export const Map: React.FC<MapProps> = ({
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <span>Cartografia</span>
+          <span>{t.basemapStreets}</span>
         </button>
       </div>
 
@@ -412,10 +416,10 @@ export const Map: React.FC<MapProps> = ({
                 ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-amber-500/30 animate-pulse'
                 : 'bg-[#090d16]/90 text-slate-200 border-slate-700 hover:border-amber-400/60 hover:text-white backdrop-blur-md'
             }`}
-            title="Clique no mapa para registar pragas, fugas de rega ou clorose"
+            title={lang === 'en' ? 'Click on map to register pest, leak or chlorosis' : 'Clique no mapa para registar pragas, fugas de rega ou clorose'}
           >
             <Crosshair className="w-4 h-4" />
-            <span>{isScoutingModeActive ? 'Modo Scouting Ativo (Clique no Mapa)' : 'Registar Ocorrência de Campo'}</span>
+            <span>{isScoutingModeActive ? t.scoutingBtnActive : t.scoutingBtnStart}</span>
           </button>
         )}
 
@@ -424,14 +428,14 @@ export const Map: React.FC<MapProps> = ({
           <button
             onClick={() => mapInstanceRef.current?.zoomIn()}
             className="p-2.5 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors border-b border-slate-800"
-            title="Aproximar"
+            title={t.zoomIn}
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={() => mapInstanceRef.current?.zoomOut()}
             className="p-2.5 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
-            title="Afastar"
+            title={t.zoomOut}
           >
             <ZoomOut className="w-4 h-4" />
           </button>
@@ -444,7 +448,7 @@ export const Map: React.FC<MapProps> = ({
         <div className="flex items-center space-x-1">
           <span className="text-[11px] font-semibold text-slate-400 mr-1 flex items-center gap-1">
             <Eye className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Camada:</span>
+            <span>{t.layerLabel}</span>
           </span>
           <button
             onClick={() => setVisualMode('ndvi')}
@@ -454,7 +458,7 @@ export const Map: React.FC<MapProps> = ({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            NDVI Vigor
+            {t.layerNdvi}
           </button>
           <button
             onClick={() => setVisualMode('ndre')}
@@ -464,7 +468,7 @@ export const Map: React.FC<MapProps> = ({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            NDRE Azoto
+            {t.layerNdre}
           </button>
           <button
             onClick={() => setVisualMode('sar')}
@@ -474,7 +478,7 @@ export const Map: React.FC<MapProps> = ({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            Radar SAR S1
+            {t.layerSar}
           </button>
           <button
             onClick={() => setVisualMode('rgb')}
@@ -484,7 +488,7 @@ export const Map: React.FC<MapProps> = ({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            RGB Natural
+            {t.layerRgb}
           </button>
         </div>
 
@@ -494,7 +498,7 @@ export const Map: React.FC<MapProps> = ({
         {/* Opacity Slider */}
         <div className="flex items-center space-x-2.5 w-full sm:w-auto">
           <Sliders className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span className="text-[11px] text-slate-400 font-medium">Opacidade:</span>
+          <span className="text-[11px] text-slate-400 font-medium">{t.opacity}</span>
           <input
             type="range"
             min="0"

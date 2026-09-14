@@ -39,41 +39,131 @@ import {
   TrainingSystem,
 } from '../lib/irrigation/fao56';
 import { generateAgronomicPdfReport } from '../lib/report/pdfReport';
-import { AlertTriangle, Crosshair, MapPin, Play, Sparkles } from 'lucide-react';
+import { Language, translations } from '../lib/i18n';
+import { AlertTriangle } from 'lucide-react';
 
 export default function DashboardPage() {
-  // Farms & Active Parcel State
+  // 1. Language & Localization State
+  const [lang, setLang] = useState<Language>('pt');
+
+  useEffect(() => {
+    try {
+      const savedLang = localStorage.getItem('cropvision_lang') as Language;
+      if (savedLang === 'en' || savedLang === 'pt') {
+        setLang(savedLang);
+      }
+    } catch {
+      // Ignore storage errors in SSR / private mode
+    }
+  }, []);
+
+  const handleLanguageChange = (newLang: Language) => {
+    setLang(newLang);
+    try {
+      localStorage.setItem('cropvision_lang', newLang);
+    } catch {
+      // Ignore storage errors
+    }
+  };
+
+  const t = translations[lang] || translations.pt;
+
+  // 2. Commercial Quota & Web Summit Pitch Mode State
+  // Default is Web Summit VIP Mode (unlimited analyses)
+  const [isWebSummitMode, setIsWebSummitMode] = useState<boolean>(true);
+  const [dailyUsage, setDailyUsage] = useState<number>(0);
+
+  const getTodayQuotaKey = () => `cropvision_usage_${new Date().toISOString().slice(0, 10)}`;
+
+  useEffect(() => {
+    try {
+      const savedMode = localStorage.getItem('cropvision_mode');
+      if (savedMode === 'standard') {
+        setIsWebSummitMode(false);
+      } else {
+        setIsWebSummitMode(true);
+      }
+
+      const todayKey = getTodayQuotaKey();
+      const count = parseInt(localStorage.getItem(todayKey) || '0', 10);
+      setDailyUsage(isNaN(count) ? 0 : count);
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  const handleToggleWebSummitMode = () => {
+    setIsWebSummitMode((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('cropvision_mode', next ? 'websummit' : 'standard');
+      } catch {
+        // Ignore
+      }
+      return next;
+    });
+  };
+
+  /**
+   * Checks whether the user is allowed to perform an analysis.
+   * In Web Summit Mode: Unlimited (always returns true).
+   * In Standard Mode: Max 3 daily analyses. If exceeded (>=3), triggers Pricing Modal & Whop redirect.
+   */
+  const checkAndIncrementQuota = (): boolean => {
+    if (isWebSummitMode) {
+      return true;
+    }
+
+    try {
+      const todayKey = getTodayQuotaKey();
+      const current = parseInt(localStorage.getItem(todayKey) || '0', 10) || 0;
+      if (current >= 3) {
+        setPricingReason('limit_reached');
+        setIsPricingOpen(true);
+        return false;
+      }
+
+      const next = current + 1;
+      localStorage.setItem(todayKey, next.toString());
+      setDailyUsage(next);
+      return true;
+    } catch {
+      return true;
+    }
+  };
+
+  // 3. Farms & Active Parcel State
   const [farms, setFarms] = useState<FarmModel[]>([]);
   const [activeFarmId, setActiveFarmIdState] = useState<string>('farm-esporao');
   const [activeParcel, setActiveParcel] = useState<ParcelModel | null>(null);
 
-  // Map Navigation & Target State
+  // 4. Map Navigation & Target State
   const [lat, setLat] = useState<number>(38.3842);
   const [lon, setLon] = useState<number>(-7.5519);
   const [zoom, setZoom] = useState<number>(14);
   const [currentPolygon, setCurrentPolygon] = useState<[number, number][] | null>(null);
   const [locationName, setLocationName] = useState<string | null>('Herdade do Esporão, Alentejo, Portugal');
 
-  // Crop & Agronomic Metadata
+  // 5. Crop & Agronomic Metadata
   const [cropType, setCropType] = useState<CropType>('vinha');
   const [trainingSystem, setTrainingSystem] = useState<TrainingSystem>('intensivo');
   const [irrigationType, setIrrigationType] = useState<IrrigationType>('gota-a-gota');
   const [agronomistName, setAgronomistName] = useState<string>('Eng. Agrónomo Miguel Silva');
   const [licenseNumber, setLicenseNumber] = useState<string>('OE-AGR-49120');
 
-  // Scouting State
+  // 6. Scouting State
   const [scoutingRecords, setScoutingRecords] = useState<ScoutingRecord[]>([]);
   const [isScoutingModeActive, setIsScoutingModeActive] = useState<boolean>(false);
   const [scoutingModalCoord, setScoutingModalCoord] = useState<{ lat: number; lon: number } | null>(null);
 
-  // System & API State
+  // 7. System & API State
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
   const [analysisData, setAnalysisData] = useState<AnalyzeResponse | null>(null);
   const [timeseriesData, setTimeseriesData] = useState<TimeSeriesPoint[] | null>(null);
   const [error, setError] = useState<{ message: string; detail?: any } | null>(null);
 
-  // Modals & Gating State
+  // 8. Modals & Gating State
   const [isParcelUploaderOpen, setIsParcelUploaderOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
@@ -114,7 +204,11 @@ export default function DashboardPage() {
 
   // Analysis Runner
   const runAnalysis = useCallback(
-    async (targetLat: number, targetLon: number, customHectares?: number) => {
+    async (targetLat: number, targetLon: number, customHectares?: number, bypassQuotaCheck = false) => {
+      if (!bypassQuotaCheck && !checkAndIncrementQuota()) {
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
@@ -128,7 +222,7 @@ export default function DashboardPage() {
 
         if (customHectares && data.prescription_map) {
           data.prescription_map = generateTractorPrescriptionMap(
-            data.location_name || 'Parcela Agrícola',
+            data.location_name || (lang === 'en' ? 'Agricultural Parcel' : 'Parcela Agrícola'),
             data.ndvi.mean,
             customHectares
           );
@@ -147,23 +241,29 @@ export default function DashboardPage() {
       } catch (err: any) {
         console.error('Analysis error:', err);
         setError({
-          message: err.message || 'Erro ao processar dados de satélite.',
+          message: err.message || (lang === 'en' ? 'Error processing satellite telemetry.' : 'Erro ao processar dados de satélite.'),
           detail: err.data,
         });
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [isWebSummitMode, lang]
   );
 
-  // Trigger initial analysis when coordinate is set
+  // Trigger initial analysis when coordinate is set (allow initial load without quota deduction)
   useEffect(() => {
-    runAnalysis(lat, lon, activeParcel?.areaHectares || 28.5);
+    runAnalysis(lat, lon, activeParcel?.areaHectares || 28.5, true);
   }, []);
 
   // Farm Selector Handler
   const handleSelectFarm = (farmId: string) => {
+    if (!isWebSummitMode && dailyUsage >= 3) {
+      setPricingReason('limit_reached');
+      setIsPricingOpen(true);
+      return;
+    }
+
     setActiveFarmIdState(farmId);
     setActiveFarmId(farmId);
 
@@ -185,6 +285,12 @@ export default function DashboardPage() {
   // Map Click Coordinate Selection Handler (When NOT in scouting mode)
   const handleSelectCoordinate = useCallback(
     (clickedLat: number, clickedLon: number) => {
+      if (!isWebSummitMode && dailyUsage >= 3) {
+        setPricingReason('limit_reached');
+        setIsPricingOpen(true);
+        return;
+      }
+
       setLat(clickedLat);
       setLon(clickedLon);
       reverseGeocode(clickedLat, clickedLon).then((geo) => {
@@ -192,7 +298,7 @@ export default function DashboardPage() {
       });
       runAnalysis(clickedLat, clickedLon, activeParcel?.areaHectares);
     },
-    [runAnalysis, activeParcel]
+    [runAnalysis, activeParcel, isWebSummitMode, dailyUsage]
   );
 
   // Map Click Handler in Scouting Mode
@@ -221,6 +327,12 @@ export default function DashboardPage() {
     areaHectares: number,
     name: string
   ) => {
+    if (!isWebSummitMode && dailyUsage >= 3) {
+      setPricingReason('limit_reached');
+      setIsPricingOpen(true);
+      return;
+    }
+
     const newParcel: ParcelModel = {
       id: `parcel-${Date.now()}`,
       name,
@@ -301,7 +413,7 @@ export default function DashboardPage() {
     const prescription =
       analysisData.prescription_map ||
       generateTractorPrescriptionMap(
-        activeParcel?.name || 'Talhão Agrícola',
+        activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão Agrícola'),
         analysisData.ndvi.mean,
         analysisData.polygon_area_hectares || 28.5
       );
@@ -320,23 +432,24 @@ export default function DashboardPage() {
       prescription,
       irrigation,
       scoutingRecords,
-      farmName: farms.find((f) => f.id === activeFarmId)?.name || 'Herdade Monte Novo',
-      parcelName: activeParcel?.name || 'Talhão 1',
+      farmName: farms.find((f) => f.id === activeFarmId)?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo'),
+      parcelName: activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1'),
       cropName: irrigation.crop.name,
       trainingSystem:
         trainingSystem === 'superintensivo'
-          ? 'Superintensivo (4x1.5m)'
+          ? (lang === 'en' ? 'Super-intensive (4x1.5m)' : 'Superintensivo (4x1.5m)')
           : trainingSystem === 'tradicional'
-          ? 'Tradicional / Sequeiro'
-          : 'Intensivo (7x5m)',
+          ? (lang === 'en' ? 'Traditional / Rainfed' : 'Tradicional / Sequeiro')
+          : (lang === 'en' ? 'Intensive (7x5m)' : 'Intensivo (7x5m)'),
       irrigationType:
         irrigationType === 'pivot'
-          ? 'Pivot Central / Aspersão'
+          ? (lang === 'en' ? 'Center Pivot / Sprinkler' : 'Pivot Central / Aspersão')
           : irrigationType === 'sequeiro'
-          ? 'Sequeiro (Sem Rega)'
-          : 'Gota-a-gota (Drip)',
+          ? (lang === 'en' ? 'Rainfed (No Irrigation)' : 'Sequeiro (Sem Rega)')
+          : (lang === 'en' ? 'Drip Irrigation' : 'Gota-a-gota (Drip)'),
       agronomistName,
       licenseNumber,
+      lang,
     });
   };
 
@@ -352,6 +465,8 @@ export default function DashboardPage() {
         locationName={locationName}
         farms={farms}
         activeFarmId={activeFarmId}
+        lang={lang}
+        onLanguageChange={handleLanguageChange}
         onSelectFarm={handleSelectFarm}
         onOpenPricing={() => {
           setPricingReason('generic');
@@ -374,6 +489,7 @@ export default function DashboardPage() {
           polygon={currentPolygon}
           scoutingRecords={scoutingRecords}
           isScoutingModeActive={isScoutingModeActive}
+          lang={lang}
           onToggleScoutingMode={() => setIsScoutingModeActive(!isScoutingModeActive)}
           onSelectCoordinate={handleSelectCoordinate}
           onScoutCoordinateClick={handleScoutMapClick}
@@ -393,7 +509,7 @@ export default function DashboardPage() {
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 max-w-md p-3.5 rounded-2xl bg-red-950/90 border border-red-500/80 text-red-200 text-xs flex items-center space-x-2.5 shadow-2xl backdrop-blur-md">
           <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
           <div className="flex-1">
-            <p className="font-bold">Falha no Processamento Satélite</p>
+            <p className="font-bold">{lang === 'en' ? 'Satellite Telemetry Processing Failure' : 'Falha no Processamento Satélite'}</p>
             <p className="text-[11px] text-red-300 mt-0.5">{error.message}</p>
           </div>
           <button
@@ -410,11 +526,12 @@ export default function DashboardPage() {
         <AnalysisPanel
           data={analysisData}
           timeseries={timeseriesData}
+          lang={lang}
           cropType={cropType}
           trainingSystem={trainingSystem}
           irrigationType={irrigationType}
           farmName={activeFarm?.name}
-          parcelName={activeParcel?.name || 'Talhão 1'}
+          parcelName={activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1')}
           isProSimulated={isProSimulated}
           onRequirePro={(reason) => {
             setPricingReason(reason as any);
@@ -432,6 +549,7 @@ export default function DashboardPage() {
       <ParcelUploader
         isOpen={isParcelUploaderOpen}
         onClose={() => setIsParcelUploaderOpen(false)}
+        lang={lang}
         onSelectParcel={handleCustomParcelLoaded}
       />
 
@@ -439,8 +557,12 @@ export default function DashboardPage() {
       <FarmSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        farmName={activeFarm?.name || 'Herdade Monte Novo'}
-        parcelName={activeParcel?.name || 'Talhão 1'}
+        lang={lang}
+        onLanguageChange={handleLanguageChange}
+        isWebSummitMode={isWebSummitMode}
+        onToggleWebSummitMode={handleToggleWebSummitMode}
+        farmName={activeFarm?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo')}
+        parcelName={activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1')}
         cropType={cropType}
         trainingSystem={trainingSystem}
         irrigationType={irrigationType}
@@ -453,6 +575,7 @@ export default function DashboardPage() {
       <NotificationCenterModal
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
+        lang={lang}
         onFocusAnomaly={() => {
           if (activeParcel) {
             setLat(activeParcel.center[0]);
@@ -467,18 +590,21 @@ export default function DashboardPage() {
           isOpen={!!scoutingModalCoord}
           lat={scoutingModalCoord.lat}
           lon={scoutingModalCoord.lon}
+          lang={lang}
           onClose={() => setScoutingModalCoord(null)}
           onSave={handleSaveScoutingRecord}
         />
       )}
 
-      {/* B2B Pricing Modal */}
+      {/* Enterprise Plans & Pricing Modal with Whop Integration */}
       <PricingModal
         isOpen={isPricingOpen}
         onClose={() => setIsPricingOpen(false)}
+        lang={lang}
         reason={pricingReason}
-        isProSimulated={isProSimulated}
-        onToggleProSimulation={() => setIsProSimulated(!isProSimulated)}
+        isWebSummitMode={isWebSummitMode}
+        onToggleWebSummitMode={handleToggleWebSummitMode}
+        dailyUsageCount={dailyUsage}
       />
     </div>
   );

@@ -48,10 +48,12 @@ import {
   IrrigationType,
   TrainingSystem,
 } from '../lib/irrigation/fao56';
+import { Language, translations } from '../lib/i18n';
 
 interface AnalysisPanelProps {
   data: AnalyzeResponse;
   timeseries: TimeSeriesPoint[] | null;
+  lang?: Language;
   cropType?: CropType;
   trainingSystem?: TrainingSystem;
   irrigationType?: IrrigationType;
@@ -67,6 +69,7 @@ interface AnalysisPanelProps {
 export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   data,
   timeseries,
+  lang = 'pt',
   cropType = 'olival',
   trainingSystem = 'intensivo',
   irrigationType = 'gota-a-gota',
@@ -82,11 +85,12 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   const [spectralIndex, setSpectralIndex] = useState<'ndvi' | 'ndre' | 'ndwi' | 'evi' | 'msavi'>('ndvi');
   const [selectedFertilizer, setSelectedFertilizer] = useState<string>('can-27');
   const [fertilizerPriceTon, setFertilizerPriceTon] = useState<number>(390);
-  const [showBandInspector, setShowBandInspector] = useState<boolean>(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [agroClimate, setAgroClimate] = useState<AgroClimateData | null>(null);
   const [isExportingVra, setIsExportingVra] = useState<boolean>(false);
   const [activeAnomalyDismissed, setActiveAnomalyDismissed] = useState<boolean>(false);
+
+  const t = translations[lang] || translations.pt;
 
   // Fetch Open-Meteo Agro-Climate Data
   useEffect(() => {
@@ -125,10 +129,9 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
     );
   }, [data.ndvi.mean, agroClimate, data.polygon_area_hectares, cropType, irrigationType, trainingSystem]);
 
-  // Early Warning Anomaly Calculation: Check if there's a recent steep drop in NDVI
+  // Early Warning Anomaly Calculation
   const anomalyInfo = useMemo(() => {
     if (!timeseries || timeseries.length < 2) {
-      // Simulate detection if NDVI is below threshold for current area
       return {
         hasAnomaly: data.ndvi.mean < 0.45,
         deltaNdvi: -0.11,
@@ -191,46 +194,76 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       case 'ndre':
         return {
           val: indices.ndre,
-          label: 'NDRE (Red Edge)',
-          title: 'Teor de Clorofila & Absorção de Azoto',
-          desc: 'Índice de fronteira da clorofila sensível a deficiências precoces de azoto foliar antes de se manifestarem no NDVI.',
+          label: t.redEdgeChlorophyll,
+          title: lang === 'en' ? 'Chlorophyll Content & Nitrogen Uptake' : 'Teor de Clorofila & Absorção de Azoto',
+          desc: lang === 'en'
+            ? 'Red-edge band index sensitive to early foliar nitrogen deficiencies before visible in NDVI.'
+            : 'Índice de fronteira da clorofila sensível a deficiências precoces de azoto foliar antes de se manifestarem no NDVI.',
           color: 'text-teal-400',
         };
       case 'ndwi':
         return {
           val: indices.ndwi,
-          label: 'NDWI (Água)',
-          title: 'Teor Hídrico & Hidratação Foliar',
-          desc: 'Absorção de radiação infravermelha SWIR B11 pela água líquida no mesófilo celular foliar.',
+          label: t.waterIndex,
+          title: lang === 'en' ? 'Canopy Water Content & Hydration' : 'Teor Hídrico & Hidratação Foliar',
+          desc: lang === 'en'
+            ? 'Shortwave infrared (SWIR B11) absorption by liquid water inside leaf mesophyll cellular structures.'
+            : 'Absorção de radiação infravermelha SWIR B11 pela água líquida no mesófilo celular foliar.',
           color: 'text-sky-400',
         };
       case 'evi':
         return {
           val: indices.evi,
-          label: 'EVI (Biomassa)',
-          title: 'Vigor sem Saturação de Dossel',
-          desc: 'Índice otimizado que desacopla o sinal do dossel da dispersão atmosférica residual.',
+          label: t.highBiomassEvi,
+          title: lang === 'en' ? 'Vigour with Saturated Canopy Decoupling' : 'Vigor sem Saturação de Dossel',
+          desc: lang === 'en'
+            ? 'Enhanced vegetation index that decouples canopy signal from atmospheric aerosols in dense crops.'
+            : 'Índice otimizado que desacopla o sinal do dossel da dispersão atmosférica residual em copas densas.',
           color: 'text-emerald-400',
         };
       case 'msavi':
         return {
           val: indices.msavi,
-          label: 'MSAVI (Solo Ajustado)',
-          title: 'Eliminação de Ruído de Solo Nu',
-          desc: 'Ajuste matemático que anula a refletância do solo exposto em culturas jovens ou compassos largos.',
+          label: t.soilAdjustedMsavi,
+          title: lang === 'en' ? 'Bare Soil Background Removal' : 'Eliminação de Ruído de Solo Nu',
+          desc: lang === 'en'
+            ? 'Mathematical adjustment that cancels bare ground brightness in young crops or wide tree spacings.'
+            : 'Ajuste matemático que anula a refletância do solo exposto em culturas jovens ou compassos largos.',
           color: 'text-lime-400',
         };
       case 'ndvi':
       default:
         return {
           val: indices.ndvi,
-          label: 'NDVI (Vigor Geral)',
-          title: 'Densidade da Biomassa Fotossintética',
-          desc: 'Diferença normalizada padrão entre infravermelho próximo (B08) e vermelho visível (B04).',
+          label: t.meanNdvi,
+          title: lang === 'en' ? 'Photosynthetic Biomass Density' : 'Densidade da Biomassa Fotossintética',
+          desc: lang === 'en'
+            ? 'Standard normalized difference between Near-Infrared (B08) and Visible Red (B04) bands.'
+            : 'Diferença normalizada padrão entre infravermelho próximo (B08) e vermelho visível (B04).',
           color: 'text-emerald-400',
         };
     }
-  }, [spectralIndex, data]);
+  }, [spectralIndex, data, lang, t]);
+
+  // Localized Fertilizer Names
+  const getFertilizerDisplayName = (fId: string, ptName: string) => {
+    if (lang === 'pt') return ptName;
+    if (fId === 'can-27') return 'Calcium Ammonium Nitrate (CAN 27% N)';
+    if (fId === 'urea-46') return 'Prilled Urea (46% N)';
+    if (fId === 'uan-32') return 'Liquid Nitrogen Solution (UAN 32% N)';
+    if (fId === 'npk-15-15-15') return 'Compound Fertilizer NPK 15-15-15';
+    return ptName;
+  };
+
+  // Localized Irrigation text
+  const localizedIrrigationText = useMemo(() => {
+    if (lang === 'pt') return irrigationSchedule.recommendedDurationText;
+    if (irrigationType === 'sequeiro') return t.drylandNoIrrigation;
+    if (irrigationSchedule.netIrrigationNeedMmDay === 0) return t.rainSatisfied;
+    const h = Math.floor(irrigationSchedule.recommendedDurationMinutes / 60);
+    const m = irrigationSchedule.recommendedDurationMinutes % 60;
+    return `Activate irrigation valve for ${h}h ${m > 0 ? `${m}min` : ''} (${irrigationSchedule.crop.typicalIrrigationRateMmH.toFixed(1)} mm/h)`;
+  }, [irrigationSchedule, lang, irrigationType, t]);
 
   return (
     <div
@@ -254,7 +287,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               </span>
             </div>
             <p className="text-[10px] text-slate-400 truncate">
-              {farmName} • {irrigationSchedule.crop.name.split(' ')[0]}
+              {farmName} • {lang === 'en' ? (cropType === 'olival' ? 'Olive Grove' : cropType === 'vinha' ? 'Vineyard' : cropType === 'amendoal' ? 'Almonds' : cropType === 'milho' ? 'Corn' : 'Pasture') : irrigationSchedule.crop.name.split(' ')[0]}
             </p>
           </div>
         </div>
@@ -266,7 +299,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             <button
               onClick={onExportPdf}
               className="px-2.5 py-1 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
-              title="Gerar Relatório Técnico Agronómico em PDF"
+              title={lang === 'en' ? 'Generate Official Technical PDF Report' : 'Gerar Relatório Técnico Agronómico em PDF'}
             >
               <FileText className="w-3.5 h-3.5 text-emerald-400" />
               <span className="hidden sm:inline">PDF</span>
@@ -303,19 +336,21 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                 <div className="flex items-center space-x-2">
                   <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
                   <span className="font-mono text-[11px] font-black uppercase text-red-400 tracking-wider">
-                    ALERTA DE STRESS ACELERADO
+                    {t.earlyWarningTitle}
                   </span>
                 </div>
                 <button
                   onClick={() => setActiveAnomalyDismissed(true)}
                   className="text-red-400 hover:text-white"
-                  title="Ocultar Alerta"
+                  title={t.close}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
               <p className="mt-1.5 text-[11px] text-slate-300 leading-relaxed">
-                Queda anómala de biomassa (<strong>ΔNDVI {anomalyInfo.deltaNdvi}</strong> em {anomalyInfo.affectedAreaPct}% da parcela). Restrição hídrica descartada pelo radar SAR S1. Suspeita de ataque fitossanitário (pragas/fungos) ou fitotoxicidade localizada.
+                {lang === 'en'
+                  ? `Abnormal biomass drop detected (ΔNDVI ${anomalyInfo.deltaNdvi} over ${anomalyInfo.affectedAreaPct}% of parcel). Soil moisture stress ruled out by Sentinel-1 SAR radar. Suspected fungal outbreak, pest damage or localized spray burn.`
+                  : `Queda anómala de biomassa (ΔNDVI ${anomalyInfo.deltaNdvi} em ${anomalyInfo.affectedAreaPct}% da parcela). Restrição hídrica descartada pelo radar SAR S1. Suspeita de ataque fitossanitário (pragas/fungos) ou fitotoxicidade localizada.`}
               </p>
               {onOpenScoutingAtCoord && (
                 <button
@@ -323,7 +358,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   className="mt-2.5 px-3 py-1 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] transition-all flex items-center gap-1.5 shadow-md shadow-red-600/30"
                 >
                   <Crosshair className="w-3 h-3" />
-                  <span>Criar Missão de Scouting no Local</span>
+                  <span>{t.createScoutingMission}</span>
                 </button>
               )}
             </div>
@@ -339,7 +374,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Ótico
+              {t.tabOptical}
             </button>
             <button
               onClick={() => setModeTab('sar')}
@@ -349,7 +384,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              SAR S1
+              {t.tabSar}
             </button>
             <button
               onClick={() => setModeTab('prescription')}
@@ -359,7 +394,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              VRA Trator
+              {t.tabVra}
             </button>
             <button
               onClick={() => setModeTab('irrigation')}
@@ -369,7 +404,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Rega FAO
+              {t.tabIrrigation}
             </button>
             <button
               onClick={() => setModeTab('climate')}
@@ -379,7 +414,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Agro-Clima
+              {t.tabClimate}
             </button>
           </div>
 
@@ -421,19 +456,19 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               {/* Multi-Index Grid */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-center">
-                  <div className="text-[10px] text-slate-400 font-mono">NDVI Médio</div>
+                  <div className="text-[10px] text-slate-400 font-mono">{t.meanNdvi}</div>
                   <div className="text-sm font-black font-mono text-emerald-400 mt-0.5">
                     {data.ndvi.mean.toFixed(2)}
                   </div>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-center">
-                  <div className="text-[10px] text-slate-400 font-mono">NDRE (Red Edge)</div>
+                  <div className="text-[10px] text-slate-400 font-mono">{t.redEdgeChlorophyll}</div>
                   <div className="text-sm font-black font-mono text-teal-400 mt-0.5">
                     {(data.multi_indices?.ndre ?? data.ndvi.mean * 0.8).toFixed(2)}
                   </div>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-center">
-                  <div className="text-[10px] text-slate-400 font-mono">NDWI (Água)</div>
+                  <div className="text-[10px] text-slate-400 font-mono">{t.waterIndex}</div>
                   <div className="text-sm font-black font-mono text-sky-400 mt-0.5">
                     {(data.multi_indices?.ndwi ?? (data.ndvi.mean - 0.25) * 0.7).toFixed(2)}
                   </div>
@@ -444,8 +479,8 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               {timeseries && timeseries.length > 0 && (
                 <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800">
                   <div className="text-[10px] uppercase font-mono text-slate-400 font-bold mb-2 flex items-center justify-between">
-                    <span>Evolução Temporal do Vigor (Sentinel-2)</span>
-                    <span className="text-emerald-400 font-normal">Últimos 12 meses</span>
+                    <span>{t.historicalTrend}</span>
+                    <span className="text-emerald-400 font-normal">{t.last12Months}</span>
                   </div>
                   <TimeSeriesChart series={timeseries} />
                 </div>
@@ -461,40 +496,40 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   <div className="flex items-center space-x-2">
                     <Radio className="w-4 h-4 text-sky-400 animate-pulse" />
                     <span className="text-xs font-bold text-white font-mono">
-                      RADAR SAR COPERNICUS SENTINEL-1
+                      {t.sarTitle}
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-sky-300 bg-sky-950 border border-sky-500/40 px-2 py-0.5 rounded">
-                    Banda C (5.405 GHz)
+                    {t.sarBand}
                   </span>
                 </div>
                 <p className="mt-2 text-[11px] text-slate-300 leading-relaxed">
-                  Micro-ondas com polarização dual (VV/VH) com penetração total através de nuvens, nevoeiro e orvalho matinal.
+                  {t.sarDesc}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                  <div className="text-[10px] text-slate-400 font-mono">Retroespalhamento Médio</div>
+                  <div className="text-[10px] text-slate-400 font-mono">{t.backscatterMean}</div>
                   <div className="text-lg font-black font-mono text-sky-400 mt-1">
                     {data.sar_radar?.backscatter_vv_db ?? -13.8} dB
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Calibração radiométrica Sigma-0</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">{t.sigmaCalibration}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                  <div className="text-[10px] text-slate-400 font-mono">Humidade Dielétrica</div>
+                  <div className="text-[10px] text-slate-400 font-mono">{t.dielectricMoisture}</div>
                   <div className="text-lg font-black font-mono text-teal-400 mt-1">
                     {data.sar_radar?.soil_moisture_estimate_pct ?? 19}% vol.
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">Camada superficial (0-5 cm)</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">{t.topsoilDepth}</div>
                 </div>
               </div>
 
               <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-300 leading-relaxed">
-                <span className="font-bold text-white">Diagnóstico SAR: </span>
+                <span className="font-bold text-white">{t.sarDiagnostic} </span>
                 {data.sar_radar?.penetration_status === 'CLOUDS_PENETRATED'
-                  ? 'Penetração micro-ondas concluída através da cobertura de nuvens com polarização dual (VV/VH).'
-                  : 'Nível de hidratação ótimo no subsolo. Sem stress hídrico severo detetado por micro-ondas.'}
+                  ? t.sarPenetrated
+                  : t.sarOptimal}
               </div>
             </div>
           )}
@@ -505,7 +540,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               {/* Fertilizer formulation selector */}
               <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
                 <label className="block text-[11px] font-bold text-slate-300">
-                  Formulação de Fertilizante Azotado:
+                  {t.fertilizerFormulation}
                 </label>
                 <select
                   value={selectedFertilizer}
@@ -514,14 +549,14 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                 >
                   {FERTILIZER_DATABASE.map((f) => (
                     <option key={f.id} value={f.id}>
-                      {f.name} ({f.nitrogen_content_pct}% N)
+                      {getFertilizerDisplayName(f.id, f.name)} ({f.nitrogen_content_pct}% N)
                     </option>
                   ))}
                 </select>
 
                 {/* Price Slider */}
                 <div className="pt-2 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400">Cotação do Adubo (€/ton):</span>
+                  <span className="text-[11px] text-slate-400">{t.fertilizerPrice}</span>
                   <div className="flex items-center space-x-2">
                     <input
                       type="range"
@@ -544,10 +579,10 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                 <table className="w-full text-left text-[11px]">
                   <thead className="bg-slate-900/90 text-slate-400 font-mono text-[10px] uppercase">
                     <tr>
-                      <th className="py-2 px-3">Zona</th>
+                      <th className="py-2 px-3">{t.tableZone}</th>
                       <th className="py-2 px-2">%</th>
-                      <th className="py-2 px-2">Área (ha)</th>
-                      <th className="py-2 px-3 text-right">Dose (kg/ha)</th>
+                      <th className="py-2 px-2">{t.tableArea}</th>
+                      <th className="py-2 px-3 text-right">{t.tableRate}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -558,7 +593,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                             className="w-2.5 h-2.5 rounded-full"
                             style={{ backgroundColor: z.color_hex }}
                           />
-                          <span>Zona {z.zone_id}</span>
+                          <span>{lang === 'en' ? `Zone ${z.zone_id}` : `Zona ${z.zone_id}`}</span>
                         </td>
                         <td className="py-2 px-2 text-slate-300">{z.percentage_of_parcel}%</td>
                         <td className="py-2 px-2 text-slate-300">{z.estimated_hectares.toFixed(1)}</td>
@@ -574,14 +609,14 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               {/* ROI Card */}
               <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/40">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-emerald-300">Poupança Anual Estimada:</span>
+                  <span className="text-[11px] font-bold text-emerald-300">{t.annualSavings}</span>
                   <span className="text-xl font-black text-emerald-400 font-mono">
                     €{activePrescription.fertilizer_savings_eur}
                   </span>
                 </div>
                 <div className="mt-1 text-[10px] text-slate-400 flex items-center justify-between">
-                  <span>Azoto poupado: {activePrescription.nitrogen_saved_kg} kg N</span>
-                  <span>CO₂ mitigado: {activePrescription.co2_equivalent_mitigated_kg} kg</span>
+                  <span>{t.nitrogenSaved} {activePrescription.nitrogen_saved_kg} kg N</span>
+                  <span>{t.co2Mitigated} {activePrescription.co2_equivalent_mitigated_kg} kg</span>
                 </div>
               </div>
 
@@ -591,20 +626,20 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   onClick={handleDownloadShapefile}
                   disabled={isExportingVra}
                   className="py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-emerald-500/30 hover:border-emerald-500/60 text-emerald-300 hover:text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                  title="Descarregar ficheiros .shp, .shx, .dbf, .prj para Trimble e Ag Leader"
+                  title={lang === 'en' ? 'Download .shp, .shx, .dbf, .prj for Trimble & Ag Leader' : 'Descarregar ficheiros .shp, .shx, .dbf, .prj para Trimble e Ag Leader'}
                 >
                   <Download className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Shapefile (.zip)</span>
+                  <span>{t.downloadShapefile}</span>
                 </button>
 
                 <button
                   onClick={handleDownloadIsoXml}
                   disabled={isExportingVra}
                   className="py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-sky-500/30 hover:border-sky-500/60 text-sky-300 hover:text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                  title="Descarregar TASKDATA/TASKDATA.XML compatível com John Deere Gen4 e Fendt"
+                  title={lang === 'en' ? 'Download TASKDATA/TASKDATA.XML for John Deere Gen4 & Fendt' : 'Descarregar TASKDATA/TASKDATA.XML compatível com John Deere Gen4 e Fendt'}
                 >
                   <Tractor className="w-3.5 h-3.5 text-sky-400" />
-                  <span>ISO-XML (.zip)</span>
+                  <span>{t.downloadIsoXml}</span>
                 </button>
               </div>
             </div>
@@ -618,15 +653,15 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   <div className="flex items-center space-x-2">
                     <Droplets className="w-4 h-4 text-teal-400" />
                     <span className="text-xs font-bold text-white font-mono">
-                      BALANÇO HÍDRICO FAO-56
+                      {t.faoTitle}
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-teal-300 bg-teal-950 border border-teal-500/40 px-2 py-0.5 rounded">
-                    Kc: {irrigationSchedule.cropCoefficientKc.toFixed(2)}
+                    {t.cropKc} {irrigationSchedule.cropCoefficientKc.toFixed(2)}
                   </span>
                 </div>
                 <p className="mt-1.5 text-[11px] text-slate-300 leading-relaxed">
-                  Cálculo dinâmico Penman-Monteith calibrado pela cultura e vigor da copa por satélite.
+                  {t.faoDesc}
                 </p>
               </div>
 
@@ -634,18 +669,18 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
                 <div className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Recomendação Operacional de Rega Hoje:</span>
+                  <span>{t.irrigationToday}</span>
                 </div>
                 <div className="text-sm font-black text-emerald-400 font-mono">
-                  {irrigationSchedule.recommendedDurationText}
+                  {localizedIrrigationText}
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-[11px]">
                   <div>
-                    <span className="text-slate-400">Consumo (ETc): </span>
+                    <span className="text-slate-400">{t.cropEtc} </span>
                     <strong className="text-white">{irrigationSchedule.cropEtcMmDay} mm/dia</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400">Necessidade: </span>
+                    <span className="text-slate-400">{t.netNeed} </span>
                     <strong className="text-white">{irrigationSchedule.waterVolumeM3HaDay} m³/ha</strong>
                   </div>
                 </div>
@@ -655,7 +690,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               {agroClimate?.weeklyEt0History && (
                 <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800">
                   <div className="text-[10px] uppercase font-mono text-slate-400 font-bold mb-2">
-                    Evapotranspiração dos Últimos 7 Dias (ET0 mm)
+                    {t.last7DaysEt0}
                   </div>
                   <div className="grid grid-cols-7 gap-1 text-center font-mono">
                     {agroClimate.weeklyEt0History.map((d, i) => (
@@ -682,30 +717,42 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                 <div className="flex items-center space-x-2">
                   <Wind className="w-4 h-4 shrink-0" />
                   <span className="text-xs font-black uppercase font-mono tracking-wider">
-                    {agroClimate?.overallStatusLabel || 'A carregar meteorologia...'}
+                    {lang === 'en'
+                      ? (agroClimate?.overallSprayingStatus === 'optimal'
+                          ? t.windowOpen
+                          : agroClimate?.overallSprayingStatus === 'moderate'
+                          ? t.windowWindRisk
+                          : t.windowUnsuitable)
+                      : (agroClimate?.overallStatusLabel || 'A carregar meteorologia...')}
                   </span>
                 </div>
                 <p className="mt-1.5 text-[11px] leading-relaxed opacity-90">
-                  {agroClimate?.sprayingRecommendation}
+                  {lang === 'en'
+                    ? (agroClimate?.overallSprayingStatus === 'optimal'
+                        ? 'Calm wind (< 15 km/h) and no precipitation. Excellent foliar retention and contact efficacy.'
+                        : agroClimate?.overallSprayingStatus === 'moderate'
+                        ? 'Moderate wind (14-20 km/h). Air-induction anti-drift nozzles and reduced boom pressure recommended.'
+                        : 'Spraying strongly discouraged. High risk of chemical rain washoff or severe off-target drift.')
+                    : agroClimate?.sprayingRecommendation}
                 </p>
               </div>
 
               {/* Current Metrics Grid */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
-                  <div className="text-[10px] text-slate-400 font-mono">Temperatura</div>
+                  <div className="text-[10px] text-slate-400 font-mono">{t.temperature}</div>
                   <div className="text-sm font-black font-mono text-white mt-0.5">
                     {agroClimate?.currentTempC ?? 22}°C
                   </div>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
-                  <div className="text-[10px] text-slate-400 font-mono">Vento (10m)</div>
+                  <div className="text-[10px] text-slate-400 font-mono">{t.windSpeed}</div>
                   <div className="text-sm font-black font-mono text-white mt-0.5">
                     {agroClimate?.currentWindKmH ?? 10} km/h
                   </div>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-center">
-                  <div className="text-[10px] text-slate-400 font-mono">Humidade Rel.</div>
+                  <div className="text-[10px] text-slate-400 font-mono">{t.humidity}</div>
                   <div className="text-sm font-black font-mono text-white mt-0.5">
                     {agroClimate?.currentHumidityPct ?? 55}%
                   </div>
@@ -716,8 +763,8 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               {agroClimate?.hourlyForecast && (
                 <div className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
                   <div className="text-[10px] uppercase font-mono text-slate-400 font-bold flex items-center justify-between">
-                    <span>Aptidão de Pulverização (Próximas 24h)</span>
-                    <span className="text-emerald-400 text-[10px] font-normal">Open-Meteo High-Res</span>
+                    <span>{t.hourlySprayingAptitude}</span>
+                    <span className="text-emerald-400 text-[10px] font-normal">{t.climateHighRes}</span>
                   </div>
                   <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 font-mono text-[11px]">
                     {agroClimate.hourlyForecast.slice(0, 16).map((hf, i) => (
@@ -738,10 +785,10 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                           }`}
                         >
                           {hf.sprayingStatus === 'optimal'
-                            ? 'Apto'
+                            ? t.statusApt
                             : hf.sprayingStatus === 'moderate'
-                            ? 'Atenção'
-                            : 'Inapropriado'}
+                            ? t.statusCaution
+                            : t.statusUnsuitable}
                         </span>
                       </div>
                     ))}
