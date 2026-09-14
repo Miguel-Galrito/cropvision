@@ -198,8 +198,8 @@ export default function DashboardPage() {
   const [timeseriesData, setTimeseriesData] = useState<TimeSeriesPoint[] | null>(null);
   const [error, setError] = useState<{ message: string; detail?: any } | null>(null);
 
-  // Mobile & Panel Viewport State
-  const [isAnalysisCollapsed, setIsAnalysisCollapsed] = useState<boolean>(false);
+  // Mobile & Panel Viewport State (Start collapsed for clean, unobtrusive map view)
+  const [isAnalysisCollapsed, setIsAnalysisCollapsed] = useState<boolean>(true);
   const [analysisTab, setAnalysisTab] = useState<'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health'>('optical');
 
   // 9. Modals & Gating State
@@ -428,6 +428,7 @@ export default function DashboardPage() {
     setLat(centerLat);
     setLon(centerLon);
     setLocationName(`${farms.find((f) => f.id === activeFarmId)?.name || 'Herdade'} - ${name}`);
+    setIsAnalysisCollapsed(false);
     runAnalysis(centerLat, centerLon, areaHectares);
   };
 

@@ -312,17 +312,71 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
     return `Activate irrigation valve for ${h}h ${m > 0 ? `${m}min` : ''} (${irrigationSchedule.crop.typicalIrrigationRateMmH.toFixed(1)} mm/h)`;
   }, [irrigationSchedule, lang, irrigationType, t]);
 
+  // 1. COLLAPSED VIEW: Ultra-Clean Floating Quick Status Card (Unobtrusive Map-First Experience)
+  if (isCollapsed) {
+    return (
+      <div
+        className="fixed z-30 bottom-16 left-3 right-3 sm:bottom-auto sm:top-20 sm:right-6 sm:left-auto sm:w-auto max-w-[calc(100vw-24px)] rounded-2xl bg-[#090d16]/95 border border-slate-800/90 shadow-2xl backdrop-blur-2xl p-3 sm:px-4 sm:py-2.5 flex items-center justify-between space-x-3.5 text-slate-200 transition-all duration-300 no-print select-none cursor-pointer group hover:border-emerald-500/50"
+        onClick={() => setIsCollapsed(false)}
+      >
+        <div className="flex items-center space-x-3 min-w-0">
+          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 group-hover:scale-105 transition-transform shrink-0">
+            <Activity className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-white font-mono uppercase tracking-wider truncate">
+                {parcelName}
+              </span>
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-1.5 py-0.2 rounded shrink-0">
+                {data.polygon_area_hectares || 28.5} ha
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 truncate">
+              {lang === 'en' ? 'Mean NDVI: ' : 'NDVI Médio: '}
+              <strong className="text-emerald-400 font-mono">{(data.ndvi?.mean || 0.52).toFixed(2)}</strong>
+              {' • '}
+              <span className="text-slate-300">{farmName}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-1.5 shrink-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsCollapsed(false);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs flex items-center space-x-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
+          >
+            <span>{lang === 'en' ? 'Telemetry' : 'Ver Análise'}</span>
+            <ChevronUp className="w-3.5 h-3.5 rotate-90" />
+          </button>
+          {onClose && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title={lang === 'en' ? 'Close' : 'Fechar'}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 2. EXPANDED VIEW: Full Deep-Tech Telemetry Drawer
   return (
     <div
-      className={`fixed z-30 bottom-16 left-0 right-0 sm:bottom-auto sm:top-20 sm:right-6 sm:left-auto sm:w-[460px] md:w-[500px] rounded-t-3xl sm:rounded-3xl bg-[#090d16]/95 border border-slate-800/90 shadow-2xl backdrop-blur-2xl flex flex-col text-slate-200 transition-all duration-300 no-print select-none ${
-        isCollapsed
-          ? 'h-16 sm:h-14 overflow-hidden'
-          : 'h-[75dvh] max-h-[80dvh] sm:h-auto sm:max-h-[85vh] overflow-hidden'
-      }`}
+      className="fixed z-30 bottom-16 left-0 right-0 sm:bottom-auto sm:top-20 sm:right-6 sm:left-auto sm:w-[460px] md:w-[500px] rounded-t-3xl sm:rounded-3xl bg-[#090d16]/95 border border-slate-800/90 shadow-2xl backdrop-blur-2xl flex flex-col text-slate-200 transition-all duration-300 no-print select-none h-[75dvh] max-h-[80dvh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
     >
       {/* Mobile Drag/Grab Handle Pill */}
       <div
-        onClick={() => setIsCollapsed(!isCollapsed)}
+        onClick={() => setIsCollapsed(true)}
         className="w-full pt-2 pb-1 flex justify-center items-center sm:hidden cursor-pointer active:opacity-70"
       >
         <div className="w-12 h-1.5 bg-slate-600/80 rounded-full hover:bg-emerald-500 transition-colors" />
@@ -330,13 +384,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
       {/* PANEL TOP HEADER */}
       <div 
-        onClick={(e) => {
-          // On mobile, clicking anywhere on the header toggles expand/collapse
-          if (window.innerWidth < 640 && (e.target as HTMLElement).tagName !== 'BUTTON') {
-            setIsCollapsed(!isCollapsed);
-          }
-        }}
-        className="p-3 sm:p-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/60 shrink-0 cursor-pointer sm:cursor-default"
+        className="p-3.5 sm:p-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/60 shrink-0"
       >
         <div className="flex items-center space-x-2.5 min-w-0">
           <div className="p-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0">
@@ -362,63 +410,42 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           {/* Share Web Audit Button */}
           {onShareAudit && (
             <button
-              onClick={(e) => { e.stopPropagation(); onShareAudit(); }}
+              onClick={onShareAudit}
               className="px-2.5 py-1 rounded-xl bg-sky-950/60 hover:bg-sky-900/80 border border-sky-500/40 text-sky-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
               title={lang === 'en' ? 'Share Public Read-Only Audit Link' : 'Partilhar Relatório de Auditoria Web'}
             >
               <Share2 className="w-3.5 h-3.5 text-sky-400" />
-              <span className="hidden sm:inline">{lang === 'en' ? 'Audit' : 'Auditoria'}</span>
-            </button>
-          )}
-
-          {/* Temporal Comparator Button */}
-          {onOpenComparator && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpenComparator(); }}
-              className="px-2.5 py-1 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
-              title={lang === 'en' ? 'Sentinel-2 Temporal Comparator' : 'Comparador Temporal de Satélite'}
-            >
-              <GitCompare className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">ΔNDVI</span>
-            </button>
-          )}
-
-          {/* Dynamic ROI Calculator Button */}
-          {onOpenRoi && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpenRoi(); }}
-              className="px-2 py-1 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/40 text-emerald-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
-              title={lang === 'en' ? 'Dynamic ROI & Carbon Calculator' : 'Calculadora de ROI Agrícola & CO2'}
-            >
-              <Calculator className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{lang === 'en' ? 'Audit' : 'Auditoria'}</span>
             </button>
           )}
 
           {/* Export PDF Button */}
           {onExportPdf && (
             <button
-              onClick={(e) => { e.stopPropagation(); onExportPdf(); }}
+              onClick={onExportPdf}
               className="px-2.5 py-1 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
               title={lang === 'en' ? 'Generate Official Technical PDF Report' : 'Gerar Relatório Técnico Agronómico em PDF'}
             >
               <FileText className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">PDF</span>
+              <span>PDF</span>
             </button>
           )}
 
           {/* Collapse Toggle */}
           <button
-            onClick={(e) => { e.stopPropagation(); setIsCollapsed(!isCollapsed); }}
+            onClick={() => setIsCollapsed(true)}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            title={lang === 'en' ? 'Minimize panel' : 'Minimizar painel'}
           >
-            {isCollapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <ChevronDown className="w-4 h-4" />
           </button>
 
           {/* Close Panel */}
           {onClose && (
             <button
-              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              onClick={onClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title={lang === 'en' ? 'Close' : 'Fechar'}
             >
               <X className="w-4 h-4" />
             </button>

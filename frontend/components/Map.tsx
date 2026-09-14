@@ -576,43 +576,28 @@ export const Map: React.FC<MapProps> = ({
         </button>
       </div>
 
-      {/* TOP-RIGHT: Drawing, Scouting & Zoom Controls */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col space-y-2">
-        {/* Draw Polygon Toggle Button */}
-        {onToggleDrawingMode && !isDrawingModeActive && (
-          <button
-            onClick={onToggleDrawingMode}
-            className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all shadow-xl flex items-center space-x-2 ${
-              isLight
-                ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300 hover:border-emerald-500'
-                : 'bg-[#090d16]/90 text-slate-200 border-slate-700 hover:border-emerald-400/60 hover:text-white backdrop-blur-md'
-            }`}
-            title={lang === 'en' ? 'Click points on the map to trace your field' : 'Clique no mapa para traçar os limites do talhão'}
-          >
-            <PenTool className="w-4 h-4 text-emerald-400" />
-            <span>{t.drawParcel}</span>
-          </button>
-        )}
-
+      {/* BOTTOM-RIGHT: Precision Zoom Controls */}
+      <div className="absolute bottom-20 sm:bottom-6 right-4 z-10 flex flex-col space-y-2">
         {/* Scouting Mode Toggle Button */}
         {onToggleScoutingMode && !isDrawingModeActive && (
           <button
             onClick={onToggleScoutingMode}
-            className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all shadow-xl flex items-center space-x-2 ${
+            className={`px-3 py-2 rounded-2xl border text-xs font-bold transition-all shadow-xl flex items-center space-x-1.5 ${
               isScoutingModeActive
                 ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-amber-500/30 animate-pulse'
                 : isLight
                 ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300 hover:border-amber-500'
                 : 'bg-[#090d16]/90 text-slate-200 border-slate-700 hover:border-amber-400/60 hover:text-white backdrop-blur-md'
             }`}
-            title={lang === 'en' ? 'Click on map to register pest, leak or chlorosis' : 'Clique no mapa para registar pragas, fugas de rega ou clorose'}
+            title={lang === 'en' ? 'Click on map to register field occurrence' : 'Registar ocorrência fitossanitária no terreno'}
           >
-            <Crosshair className="w-4 h-4 text-amber-400" />
-            <span>{isScoutingModeActive ? t.scoutingBtnActive : t.scoutingBtnStart}</span>
+            <Crosshair className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden md:inline">{isScoutingModeActive ? t.scoutingBtnActive : t.scoutingBtnStart}</span>
+            <span className="md:hidden">Ocorrência</span>
           </button>
         )}
 
-        {/* Zoom In / Out */}
+        {/* Vertical Zoom Slider / Buttons */}
         <div
           className={`flex flex-col rounded-2xl border shadow-xl backdrop-blur-md overflow-hidden self-end ${
             isLight
