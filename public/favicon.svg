@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#064e3b" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#090d16" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="emeraldCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="50%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Shield -->
+  <rect width="120" height="120" rx="28" fill="#090d16" stroke="#10b981" stroke-width="2.5" stroke-opacity="0.4"/>
+  <circle cx="60" cy="60" r="48" fill="url(#bgGlow)"/>
+
+  <!-- Radar Grid Rings -->
+  <circle cx="60" cy="60" r="38" stroke="#10b981" stroke-width="1" stroke-opacity="0.25" stroke-dasharray="3 3"/>
+  <circle cx="60" cy="60" r="26" stroke="#10b981" stroke-width="1" stroke-opacity="0.35"/>
+  <circle cx="60" cy="60" r="14" stroke="#06b6d4" stroke-width="1" stroke-opacity="0.4"/>
+
+  <!-- Crosshairs / Orbital Axes -->
+  <line x1="60" y1="16" x2="60" y2="104" stroke="#10b981" stroke-width="1" stroke-opacity="0.2"/>
+  <line x1="16" y1="60" x2="104" y2="60" stroke="#10b981" stroke-width="1" stroke-opacity="0.2"/>
+
+  <!-- Stylized Agricultural Leaf (Canopy Health) -->
+  <path d="M60 28 C74 44 80 64 60 92 C40 64 46 44 60 28 Z" fill="url(#emeraldCyan)" filter="url(#glow)"/>
+  <path d="M60 38 L60 84" stroke="#090d16" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M60 52 L70 46" stroke="#090d16" stroke-width="2" stroke-linecap="round"/>
+  <path d="M60 62 L50 56" stroke="#090d16" stroke-width="2" stroke-linecap="round"/>
+  <path d="M60 72 L68 67" stroke="#090d16" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Orbit Ellipse -->
+  <ellipse cx="60" cy="60" rx="46" ry="18" stroke="#38bdf8" stroke-width="1.8" stroke-opacity="0.7" transform="rotate(-28 60 60)"/>
+
+  <!-- Orbiting Satellite Unit -->
+  <g transform="translate(92, 40) rotate(-28)">
+    <rect x="-6" y="-6" width="12" height="12" rx="2" fill="#38bdf8" stroke="#ffffff" stroke-width="1.5" filter="url(#glow)"/>
+    <!-- Solar Panels -->
+    <rect x="-16" y="-4" width="8" height="8" rx="1" fill="#0284c7" stroke="#38bdf8" stroke-width="1"/>
+    <rect x="8" y="-4" width="8" height="8" rx="1" fill="#0284c7" stroke="#38bdf8" stroke-width="1"/>
+    <circle cx="0" cy="0" r="2" fill="#ffffff"/>
+  </g>
+</svg>

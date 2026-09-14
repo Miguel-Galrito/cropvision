@@ -1,0 +1,13 @@
+﻿{
+    "private":  true,
+    "name":  "cropvision",
+    "version":  "2.0.0",
+    "dependencies":  {
+                         "next":  "^14.2.15"
+                     },
+    "scripts":  {
+                    "build":  "cd frontend \u0026\u0026 npm install \u0026\u0026 npm run build \u0026\u0026 node -e \"const fs=require(\u0027fs\u0027); fs.cpSync(\u0027.next\u0027, \u0027../.next\u0027, {recursive:true}); if(fs.existsSync(\u0027public\u0027)) fs.cpSync(\u0027public\u0027, \u0027../public\u0027, {recursive:true})\"",
+                    "dev":  "npm --prefix frontend run dev",
+                    "start":  "npm --prefix frontend start"
+                }
+}

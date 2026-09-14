@@ -133,31 +133,36 @@ export const Map: React.FC<MapProps> = ({
         zoomControl: false,
       });
 
-      // 1. Esri World Imagery (High-Resolution Satellite Layer) - DEFAULT
+      // 1. Ultra-reliable High-Resolution Satellite Layer (Google Satellite HD)
       const satelliteLayer = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
         {
-          attribution: 'Tiles &copy; Esri &mdash; Maxar, Earthstar Geographics',
-          maxZoom: 19,
+          attribution: 'Imagery &copy; Google &mdash; Maxar, CNES/Airbus',
+          maxZoom: 20,
+          subdomains: ['0', '1', '2', '3'],
         }
       ).addTo(map);
 
-      // 2. Hybrid Boundaries and Place Labels Overlay
+      // 2. Hybrid Boundaries and Place Labels Overlay (Google Hybrid)
       const hybridLabelsLayer = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
         {
-          attribution: '',
-          maxZoom: 19,
-          opacity: 0.85,
+          attribution: 'Imagery &copy; Google &mdash; Hybrid',
+          maxZoom: 20,
+          subdomains: ['0', '1', '2', '3'],
+          opacity: 0.95,
         }
       );
 
-      // 3. OpenStreetMap Streets Layer
-      const streetsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19,
-        subdomains: ['a', 'b', 'c'],
-      });
+      // 3. Streets Layer
+      const streetsLayer = L.tileLayer(
+        'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+        {
+          attribution: '&copy; Google Maps',
+          maxZoom: 20,
+          subdomains: ['0', '1', '2', '3'],
+        }
+      );
 
       tileLayersRef.current = {
         satellite: satelliteLayer,
@@ -243,7 +248,6 @@ export const Map: React.FC<MapProps> = ({
     if (basemap === 'satellite') {
       if (satellite) satellite.addTo(map);
     } else if (basemap === 'hybrid') {
-      if (satellite) satellite.addTo(map);
       if (hybridLabels) hybridLabels.addTo(map);
     } else if (basemap === 'streets') {
       if (streets) streets.addTo(map);
