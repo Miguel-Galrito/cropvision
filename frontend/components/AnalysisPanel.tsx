@@ -33,8 +33,12 @@ import {
   Tractor,
   Crosshair,
   ShieldAlert,
+  Share2,
+  GitCompare,
+  Calculator,
 } from 'lucide-react';
 import { TimeSeriesChart } from './TimeSeriesChart';
+import { RoiCalculatorWidget } from './RoiCalculatorWidget';
 import {
   generateTractorPrescriptionMap,
   FERTILIZER_DATABASE,
@@ -67,6 +71,9 @@ interface AnalysisPanelProps {
   onExportPdf?: () => void;
   onOpenScoutingAtCoord?: (lat: number, lon: number) => void;
   onLogTreatmentToFieldBook?: (disease: DiseaseRiskAssessment) => void;
+  onShareAudit?: () => void;
+  onOpenComparator?: () => void;
+  onOpenRoi?: () => void;
   onClose?: () => void;
 }
 
@@ -85,6 +92,9 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   onExportPdf,
   onOpenScoutingAtCoord,
   onLogTreatmentToFieldBook,
+  onShareAudit,
+  onOpenComparator,
+  onOpenRoi,
   onClose,
 }) => {
   const [modeTab, setModeTab] = useState<'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health'>('optical');
@@ -301,6 +311,41 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
         {/* Header Action Buttons */}
         <div className="flex items-center space-x-1.5 shrink-0">
+          {/* Share Web Audit Button */}
+          {onShareAudit && (
+            <button
+              onClick={onShareAudit}
+              className="px-2.5 py-1 rounded-xl bg-sky-950/60 hover:bg-sky-900/80 border border-sky-500/40 text-sky-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
+              title={lang === 'en' ? 'Share Public Read-Only Audit Link' : 'Partilhar Relatório de Auditoria Web'}
+            >
+              <Share2 className="w-3.5 h-3.5 text-sky-400" />
+              <span className="hidden sm:inline">{lang === 'en' ? 'Audit' : 'Auditoria'}</span>
+            </button>
+          )}
+
+          {/* Temporal Comparator Button */}
+          {onOpenComparator && (
+            <button
+              onClick={onOpenComparator}
+              className="px-2.5 py-1 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
+              title={lang === 'en' ? 'Sentinel-2 Temporal Comparator' : 'Comparador Temporal de Satélite'}
+            >
+              <GitCompare className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">ΔNDVI</span>
+            </button>
+          )}
+
+          {/* Dynamic ROI Calculator Button */}
+          {onOpenRoi && (
+            <button
+              onClick={onOpenRoi}
+              className="px-2 py-1 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/40 text-emerald-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
+              title={lang === 'en' ? 'Dynamic ROI & Carbon Calculator' : 'Calculadora de ROI Agrícola & CO2'}
+            >
+              <Calculator className="w-3.5 h-3.5 text-emerald-400" />
+            </button>
+          )}
+
           {/* Export PDF Button */}
           {onExportPdf && (
             <button
@@ -623,19 +668,14 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                 </table>
               </div>
 
-              {/* ROI Card */}
-              <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/40">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-emerald-300">{t.annualSavings}</span>
-                  <span className="text-xl font-black text-emerald-400 font-mono">
-                    €{activePrescription.fertilizer_savings_eur}
-                  </span>
-                </div>
-                <div className="mt-1 text-[10px] text-slate-400 flex items-center justify-between">
-                  <span>{t.nitrogenSaved} {activePrescription.nitrogen_saved_kg} kg N</span>
-                  <span>{t.co2Mitigated} {activePrescription.co2_equivalent_mitigated_kg} kg</span>
-                </div>
-              </div>
+              {/* Dynamic ROI & Carbon Mitigation Widget */}
+              <RoiCalculatorWidget
+                areaHectares={data.polygon_area_hectares || 28.5}
+                cropType={cropType}
+                lang={lang}
+                theme={theme}
+                onOpenModal={onOpenRoi}
+              />
 
               {/* Export Buttons (Shapefile & ISO-XML) */}
               <div className="grid grid-cols-2 gap-2 pt-1">

@@ -1,10 +1,11 @@
 /** @type {import('next').NextConfig} */
 const isVercel = process.env.VERCEL === '1';
 const isGithubActions = process.env.GITHUB_ACTIONS === 'true' && !isVercel;
-const basePath = isGithubActions ? '/sat-health-api' : '';
+const isStaticExport = process.env.STATIC_EXPORT === 'true' || isGithubActions;
+const basePath = isGithubActions ? '/cropvision-saas' : '';
 
 const nextConfig = {
-  output: 'export',
+  ...(isStaticExport ? { output: 'export' } : {}),
   basePath: basePath,
   assetPrefix: basePath ? `${basePath}/` : undefined,
   trailingSlash: true,

@@ -19,6 +19,9 @@ import {
   Moon,
   PenTool,
   BookOpen,
+  Calculator,
+  GitCompare,
+  Share2,
 } from 'lucide-react';
 import { FarmModel } from '../lib/gis/parcelStorage';
 import { Language, translations } from '../lib/i18n';
@@ -43,6 +46,9 @@ interface NavbarProps {
   onOpenNotifications?: () => void;
   onExportPdf?: () => void;
   onOpenFieldBook?: () => void;
+  onOpenComparator?: () => void;
+  onOpenRoi?: () => void;
+  onShareAudit?: () => void;
   activeAnomaliesCount?: number;
 }
 
@@ -66,6 +72,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNotifications,
   onExportPdf,
   onOpenFieldBook,
+  onOpenComparator,
+  onOpenRoi,
+  onShareAudit,
   activeAnomaliesCount = 3,
 }) => {
   const [isFarmDropdownOpen, setIsFarmDropdownOpen] = useState(false);
@@ -330,6 +339,54 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <BookOpen className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="hidden lg:inline">{t.fieldBookBtn}</span>
+          </button>
+        )}
+
+        {/* Sentinel-2 Temporal Comparator */}
+        {onOpenComparator && (
+          <button
+            onClick={onOpenComparator}
+            className={`hidden xl:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-sm ${
+              isLight
+                ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                : 'bg-slate-900 hover:bg-slate-800 text-emerald-400 hover:text-white border-emerald-500/30'
+            }`}
+            title={lang === 'en' ? 'Sentinel-2 Temporal Comparator' : 'Comparador Temporal de Satélite'}
+          >
+            <GitCompare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>ΔNDVI</span>
+          </button>
+        )}
+
+        {/* Dynamic ROI Calculator */}
+        {onOpenRoi && (
+          <button
+            onClick={onOpenRoi}
+            className={`hidden lg:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-sm ${
+              isLight
+                ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                : 'bg-slate-900 hover:bg-slate-800 text-emerald-300 hover:text-white border-emerald-500/30'
+            }`}
+            title={lang === 'en' ? 'Dynamic ROI & Carbon Model' : 'Calculadora de ROI Agrícola & CO2'}
+          >
+            <Calculator className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>ROI</span>
+          </button>
+        )}
+
+        {/* Public Audit Report Share */}
+        {onShareAudit && (
+          <button
+            onClick={onShareAudit}
+            className={`hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-sm ${
+              isLight
+                ? 'bg-sky-50 hover:bg-sky-100 text-sky-800 border-sky-300'
+                : 'bg-sky-950/60 hover:bg-sky-900/80 text-sky-300 hover:text-white border-sky-500/40'
+            }`}
+            title={lang === 'en' ? 'Share Public Read-Only Audit Link' : 'Partilhar Relatório de Auditoria Web'}
+          >
+            <Share2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span className="hidden md:inline">{lang === 'en' ? 'Audit' : 'Auditoria'}</span>
           </button>
         )}
 

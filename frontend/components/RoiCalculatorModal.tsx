@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Calculator,
   TrendingUp,
@@ -10,36 +10,77 @@ import {
   X,
   ExternalLink,
   Sparkles,
+  Leaf,
+  Scale,
+  Zap,
 } from 'lucide-react';
+import { Language, translations } from '../lib/i18n';
 
 interface RoiCalculatorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialHectares?: number;
+  cropType?: string;
+  lang?: Language;
 }
 
 export const RoiCalculatorModal: React.FC<RoiCalculatorModalProps> = ({
   isOpen,
   onClose,
+  initialHectares = 250,
+  cropType = 'olival',
+  lang = 'pt',
 }) => {
-  const [hectares, setHectares] = useState<number>(250);
+  const [hectares, setHectares] = useState<number>(initialHectares);
+  const [fertilizerPriceTon, setFertilizerPriceTon] = useState<number>(420); // €/ton CAN-27
+  const [waterCostM3, setWaterCostM3] = useState<number>(0.18); // €/m³ pumping cost
+  const [selectedPlan, setSelectedPlan] = useState<'starter' | 'pro'>('pro');
+
+  const t = translations[lang] || translations.pt;
+
+  // Real-world precision agronomic ROI calculations:
+  const metrics = useMemo(() => {
+    // 1. Variable-rate Nitrogen optimization:
+    // CAN-27 saved per ha through prescription mapping (~75 kg/ha)
+    const can27SavedKgPerHa = 75;
+    const fertilizerSavingsPerHa = (can27SavedKgPerHa / 1000) * fertilizerPriceTon;
+    const fertilizerSavings = Math.round(fertilizerSavingsPerHa * hectares);
+
+    // 2. Irrigation & water monitoring efficiency (FAO-56):
+    // 420 m³/ha saved in unnecessary pumping
+    const waterSavedM3PerHa = 420;
+    const waterSavingsPerHa = waterSavedM3PerHa * waterCostM3;
+    const waterSavings = Math.round(waterSavingsPerHa * hectares);
+    const totalWaterM3 = Math.round(waterSavedM3PerHa * hectares);
+
+    // 3. Early detection of pest, fungal, or drainage issues (~ 28€/ha in yield losses prevented)
+    const pestSavings = Math.round(hectares * 28);
+
+    // 4. Carbon Mitigation (IPCC Tier 1: 4.6 kg CO2e / kg synthetic N avoided)
+    const nAvoidedKg = hectares * can27SavedKgPerHa * 0.27;
+    const co2AvoidedTons = Number(((nAvoidedKg * 4.6) / 1000).toFixed(1));
+
+    const totalAnnualSavings = fertilizerSavings + waterSavings + pestSavings;
+
+    // SaaS Plan Cost
+    const annualCost = selectedPlan === 'starter' ? 49 * 12 : 149 * 12;
+    const roiMultiplier = Math.max(1, Math.round((totalAnnualSavings / annualCost) * 10) / 10);
+    const netProfit = totalAnnualSavings - annualCost;
+
+    return {
+      fertilizerSavings,
+      waterSavings,
+      totalWaterM3,
+      pestSavings,
+      co2AvoidedTons,
+      totalAnnualSavings,
+      annualCost,
+      roiMultiplier,
+      netProfit,
+    };
+  }, [hectares, fertilizerPriceTon, waterCostM3, selectedPlan]);
 
   if (!isOpen) return null;
-
-  // Real-world agronomic precision savings model:
-  // 1. Variable-rate fertilizer optimization (nitrogen & NPK savings ~ 24€/ha/yr)
-  const fertilizerSavings = Math.round(hectares * 24);
-
-  // 2. Irrigation & water monitoring efficiency (energy + water ~ 18€/ha/yr)
-  const waterSavings = Math.round(hectares * 18);
-
-  // 3. Early detection of pest, fungal, or drainage issues (~ 32€/ha/yr in saved yield losses)
-  const pestSavings = Math.round(hectares * 32);
-
-  const totalAnnualSavings = fertilizerSavings + waterSavings + pestSavings;
-
-  // Pro Enterprise cost: 149€/month * 12 months = 1,788€/year
-  const annualCostPro = 149 * 12;
-  const roiMultiplier = Math.max(1, Math.round(totalAnnualSavings / annualCostPro));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
@@ -63,19 +104,21 @@ export const RoiCalculatorModal: React.FC<RoiCalculatorModalProps> = ({
           </div>
           <div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-white">
-              Calculadora de ROI Agrícola
+              {lang === 'en' ? 'CropVision Dynamic ROI & Carbon Model' : 'Calculadora de ROI Agrícola & Descarbonização'}
             </h2>
             <p className="text-xs text-slate-400">
-              Estime o retorno sobre investimento com monitorização de satélite Sentinel-2
+              {lang === 'en'
+                ? 'Precision satellite analytics return on investment for European agribusiness'
+                : 'Retorno financeiro e poupança de insumos com base em dados de satélite Sentinel-1/2'}
             </p>
           </div>
         </div>
 
-        {/* Interactive Slider */}
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 mb-6">
+        {/* Interactive Hectares Slider */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 mb-4">
           <div className="flex justify-between items-center mb-3">
             <label className="text-xs font-semibold text-slate-300">
-              Área Total Cultivada (Herdade / Exploração):
+              {lang === 'en' ? 'Total Cultivated Area (Estate / Farm):' : 'Área Total Cultivada (Herdade / Exploração):'}
             </label>
             <div className="flex items-baseline space-x-1 px-3 py-1 rounded-xl bg-emerald-950/60 border border-emerald-800/60">
               <span className="text-xl sm:text-2xl font-extrabold text-emerald-400 font-mono">
@@ -87,91 +130,153 @@ export const RoiCalculatorModal: React.FC<RoiCalculatorModalProps> = ({
 
           <input
             type="range"
-            min="50"
+            min="10"
             max="5000"
-            step="25"
+            step="10"
             value={hectares}
             onChange={(e) => setHectares(Number(e.target.value))}
             className="w-full accent-emerald-500 bg-slate-800 rounded-lg cursor-pointer h-2.5"
           />
 
           <div className="flex justify-between text-[11px] text-slate-500 mt-2 font-mono">
-            <span>50 ha (Pequena Quinta)</span>
-            <span>1.000 ha (Média Herdade)</span>
-            <span>5.000 ha (Grande Agroindústria)</span>
+            <span>20 ha (Vinha Familiar)</span>
+            <span>250 ha (Herdade Alentejana)</span>
+            <span>2.500+ ha (Agroindústria)</span>
+          </div>
+        </div>
+
+        {/* Cost Parameters: Fertilizer & Pumping */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800">
+            <label className="text-xs font-medium text-slate-300 block mb-1">
+              {lang === 'en' ? 'Nitrogen Fertilizer (CAN-27 €/ton):' : 'Adubo Azotado (Nitrato Amónio CAN-27 €/ton):'}
+            </label>
+            <div className="flex items-center space-x-2">
+              <input
+                type="number"
+                min="200"
+                max="1000"
+                step="10"
+                value={fertilizerPriceTon}
+                onChange={(e) => setFertilizerPriceTon(Number(e.target.value) || 420)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm font-mono text-white focus:outline-none focus:border-emerald-500"
+              />
+              <span className="text-xs text-slate-400 font-mono">€/t</span>
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Preço médio de mercado de azoto sintético.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800">
+            <label className="text-xs font-medium text-slate-300 block mb-1">
+              {lang === 'en' ? 'Pumping & Energy Cost (€/m³):' : 'Custo de Bombagem & Água (€/m³):'}
+            </label>
+            <div className="flex items-center space-x-2">
+              <input
+                type="number"
+                min="0.05"
+                max="1.00"
+                step="0.01"
+                value={waterCostM3}
+                onChange={(e) => setWaterCostM3(Number(e.target.value) || 0.18)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm font-mono text-white focus:outline-none focus:border-emerald-500"
+              />
+              <span className="text-xs text-slate-400 font-mono">€/m³</span>
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Consumo elétrico por m³ bombeado em gota-a-gota/pivot.
+            </p>
           </div>
         </div>
 
         {/* Big ROI Result Banner */}
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-emerald-900/30 to-slate-900 border border-emerald-500/40 mb-6 text-center">
+        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-emerald-900/30 to-slate-900 border border-emerald-500/40 mb-5 text-center">
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-center space-x-1.5 mb-1">
             <TrendingUp className="w-4 h-4" />
-            <span>Poupança Anual Estimada</span>
+            <span>{lang === 'en' ? 'Estimated Total Annual Savings' : 'Poupança Anual Estimada'}</span>
           </span>
-          <div className="text-3xl sm:text-5xl font-black text-white tracking-tight my-2">
-            {totalAnnualSavings.toLocaleString()} € <span className="text-lg font-normal text-slate-400">/ ano</span>
+          <div className="text-3xl sm:text-5xl font-black text-white tracking-tight my-2 font-mono">
+            {metrics.totalAnnualSavings.toLocaleString()} €{' '}
+            <span className="text-lg font-normal text-slate-400">/ ano</span>
           </div>
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold mt-1">
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold mt-1">
             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Retorno de {roiMultiplier}x sobre o investimento do Plano Pro Enterprise</span>
+            <span>
+              Retorno de <strong>{metrics.roiMultiplier}x</strong> sobre a subscrição anual ({metrics.annualCost} €/ano)
+            </span>
           </div>
         </div>
 
         {/* Detailed Breakdown */}
         <div className="space-y-3 mb-6">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Discriminação das Fontes de Poupança por Hectare:
+            {lang === 'en' ? 'Economic & Environmental Breakdown:' : 'Discriminação de Poupança & Sustentabilidade:'}
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
             {/* 1. Fertilizantes */}
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
-              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-200 mb-1">
-                <Sprout className="w-4 h-4 text-emerald-400" />
-                <span>Fertilizantes & NPK</span>
+            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-200 mb-1">
+                <Sprout className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="truncate">Adubo VRA</span>
               </div>
-              <div className="text-lg font-bold text-white font-mono">
-                {fertilizerSavings.toLocaleString()} €
+              <div className="text-base font-bold text-white font-mono">
+                {metrics.fertilizerSavings.toLocaleString()} €
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">
-                Poupança em taxas variáveis guiadas por NDVI (~24€/ha).
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Redução média de ~75 kg CAN-27/ha.
               </p>
             </div>
 
             {/* 2. Rega & Água */}
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
-              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-200 mb-1">
-                <Droplets className="w-4 h-4 text-sky-400" />
-                <span>Gestão da Rega</span>
+            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-200 mb-1">
+                <Droplets className="w-3.5 h-3.5 text-sky-400" />
+                <span className="truncate">Rega FAO-56</span>
               </div>
-              <div className="text-lg font-bold text-white font-mono">
-                {waterSavings.toLocaleString()} €
+              <div className="text-base font-bold text-white font-mono">
+                {metrics.waterSavings.toLocaleString()} €
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">
-                Redução de bombagem e deteção de zonas saturadas (~18€/ha).
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {metrics.totalWaterM3.toLocaleString()} m³ poupados.
               </p>
             </div>
 
             {/* 3. Prevenção de Perdas */}
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
-              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-200 mb-1">
-                <ShieldAlert className="w-4 h-4 text-amber-400" />
-                <span>Pragas & Stress</span>
+            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-200 mb-1">
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                <span className="truncate">Sanidade</span>
               </div>
-              <div className="text-lg font-bold text-white font-mono">
-                {pestSavings.toLocaleString()} €
+              <div className="text-base font-bold text-white font-mono">
+                {metrics.pestSavings.toLocaleString()} €
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">
-                Ação rápida antecipada antes da quebra de colheita (~32€/ha).
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Deteção precoce de fungos/stress.
+              </p>
+            </div>
+
+            {/* 4. Descarbonização */}
+            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-200 mb-1">
+                <Leaf className="w-3.5 h-3.5 text-teal-400" />
+                <span className="truncate">CO₂e Evitado</span>
+              </div>
+              <div className="text-base font-bold text-emerald-400 font-mono">
+                {metrics.co2AvoidedTons} t
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Fator IPCC synthetic N.
               </p>
             </div>
           </div>
         </div>
 
-        {/* CTA to subscribe Pro */}
+        {/* CTA to subscribe via Whop */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-800/80">
           <div className="text-xs text-slate-400">
-            Custo do plano Pro: apenas <strong>149€/mês</strong> com parcelas ilimitadas.
+            Plano Pro Enterprise: <strong>149€/mês</strong> (Lucro líquido estimado: <strong>+{metrics.netProfit.toLocaleString()} €/ano</strong>).
           </div>
           <a
             href="https://whop.com/cropvision/cropvision-pro-enterprise/"

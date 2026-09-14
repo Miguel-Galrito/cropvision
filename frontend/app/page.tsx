@@ -11,6 +11,8 @@ import { FarmSettingsModal } from '../components/FarmSettingsModal';
 import { NotificationCenterModal } from '../components/NotificationCenterModal';
 import { ScoutingModal } from '../components/ScoutingModal';
 import { FieldBookModal } from '../components/FieldBookModal';
+import { HistoricalComparatorModal } from '../components/HistoricalComparatorModal';
+import { RoiCalculatorModal } from '../components/RoiCalculatorModal';
 import { DiseaseRiskAssessment } from '../lib/disease/epidemiology';
 import {
   AnalyzeResponse,
@@ -28,6 +30,7 @@ import {
   FarmModel,
   ParcelModel,
 } from '../lib/gis/parcelStorage';
+import { syncParcelToSupabase, syncFarmToSupabase } from '../lib/supabaseService';
 import {
   loadScoutingRecords,
   saveScoutingRecord,
@@ -43,7 +46,7 @@ import {
 import { fetchAgroClimate } from '../lib/weather/openMeteo';
 import { generateAgronomicPdfReport } from '../lib/report/pdfReport';
 import { Language, translations } from '../lib/i18n';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export default function DashboardPage() {
   // 1. Language & Localization State
@@ -204,6 +207,29 @@ export default function DashboardPage() {
   const [isPricingOpen, setIsPricingOpen] = useState<boolean>(false);
   const [pricingReason, setPricingReason] = useState<'limit_reached' | 'pdf_unlock' | 'vra_unlock' | 'generic'>('generic');
   const [isProSimulated, setIsProSimulated] = useState<boolean>(false);
+  const [isComparatorOpen, setIsComparatorOpen] = useState<boolean>(false);
+  const [isRoiModalOpen, setIsRoiModalOpen] = useState<boolean>(false);
+  const [auditToastMessage, setAuditToastMessage] = useState<string | null>(null);
+
+  const handleShareAudit = useCallback(() => {
+    try {
+      const pId = activeParcel?.id || 'parcel-1';
+      const token = `cv_sec_${Math.random().toString(36).substring(2, 10)}`;
+      const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/audit/${pId}?token=${token}`;
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        navigator.clipboard.writeText(url);
+      }
+      setAuditToastMessage(
+        lang === 'en'
+          ? 'Public Read-Only Audit Link copied to clipboard!'
+          : 'Link de Auditoria Pública copiado para a área de transferência!'
+      );
+      setTimeout(() => setAuditToastMessage(null), 3500);
+    } catch {
+      setAuditToastMessage('Erro ao copiar link de auditoria');
+      setTimeout(() => setAuditToastMessage(null), 3000);
+    }
+  }, [activeParcel, lang]);
 
   // Load Initial Farms and Scouting Records
   useEffect(() => {
@@ -389,6 +415,8 @@ export default function DashboardPage() {
 
     setFarms(updatedFarms);
     saveFarms(updatedFarms);
+    // Transparently persist to Supabase if configured
+    syncParcelToSupabase(newParcel, activeFarmId).catch(() => {});
     setActiveParcel(newParcel);
 
     setCurrentPolygon(polygon);
@@ -461,6 +489,12 @@ export default function DashboardPage() {
 
     setFarms(updatedFarms);
     saveFarms(updatedFarms);
+
+    // Sync updated farm metadata to Supabase
+    const activeFarmObj = updatedFarms.find((f) => f.id === activeFarmId);
+    if (activeFarmObj) {
+      syncFarmToSupabase(activeFarmObj).catch(() => {});
+    }
   };
 
   // Export Agronomic Technical PDF Report
@@ -556,6 +590,9 @@ export default function DashboardPage() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         onOpenFieldBook={() => setIsFieldBookOpen(true)}
+        onOpenComparator={() => setIsComparatorOpen(true)}
+        onOpenRoi={() => setIsRoiModalOpen(true)}
+        onShareAudit={handleShareAudit}
         onExportPdf={handleExportPdf}
         activeAnomaliesCount={3}
       />
@@ -624,6 +661,9 @@ export default function DashboardPage() {
             setIsPricingOpen(true);
           }}
           onExportPdf={handleExportPdf}
+          onOpenComparator={() => setIsComparatorOpen(true)}
+          onOpenRoi={() => setIsRoiModalOpen(true)}
+          onShareAudit={handleShareAudit}
           onOpenScoutingAtCoord={(scoutLat, scoutLon) => {
             setScoutingModalCoord({ lat: scoutLat, lon: scoutLon });
           }}
@@ -748,6 +788,36 @@ export default function DashboardPage() {
         onToggleWebSummitMode={handleToggleWebSummitMode}
         dailyUsageCount={dailyUsage}
       />
+
+      {/* Sentinel-2 Historical Split-Comparator Modal */}
+      <HistoricalComparatorModal
+        isOpen={isComparatorOpen}
+        onClose={() => setIsComparatorOpen(false)}
+        parcelName={activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1')}
+        farmName={activeFarm?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo')}
+        currentNdvi={analysisData?.ndvi?.mean || 0.74}
+        timeseries={timeseriesData}
+        coordinates={{ lat, lon }}
+        lang={lang}
+        theme={theme}
+      />
+
+      {/* Dynamic ROI & Carbon Calculator Modal */}
+      <RoiCalculatorModal
+        isOpen={isRoiModalOpen}
+        onClose={() => setIsRoiModalOpen(false)}
+        initialHectares={analysisData?.polygon_area_hectares || activeParcel?.areaHectares || 250}
+        cropType={cropType}
+        lang={lang}
+      />
+
+      {/* Public Audit Toast Notification */}
+      {auditToastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-emerald-950 border border-emerald-500/70 text-emerald-200 text-xs font-bold shadow-2xl flex items-center space-x-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{auditToastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }
