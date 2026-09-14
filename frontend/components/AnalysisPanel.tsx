@@ -54,6 +54,7 @@ interface AnalysisPanelProps {
   data: AnalyzeResponse;
   timeseries: TimeSeriesPoint[] | null;
   lang?: Language;
+  theme?: 'dark' | 'light';
   cropType?: CropType;
   trainingSystem?: TrainingSystem;
   irrigationType?: IrrigationType;
@@ -70,6 +71,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   data,
   timeseries,
   lang = 'pt',
+  theme = 'dark',
   cropType = 'olival',
   trainingSystem = 'intensivo',
   irrigationType = 'gota-a-gota',
@@ -148,15 +150,16 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
     };
   }, [timeseries, data.ndvi.mean]);
 
-  // Handle VRA Shapefile Download
+  // Handle VRA Shapefile Download (Real .zip containing .shp, .shx, .dbf, .prj)
   const handleDownloadShapefile = async () => {
-    if (!isProSimulated && onRequirePro) {
-      onRequirePro('vra_unlock');
-      return;
-    }
     setIsExportingVra(true);
     try {
-      await downloadVraShapefileZip(activePrescription, data.coordinates.lat, data.coordinates.lon);
+      await downloadVraShapefileZip(
+        activePrescription,
+        data.coordinates.lat,
+        data.coordinates.lon,
+        data.ndvi.mean
+      );
     } catch (err) {
       console.error('Failed to export Shapefile:', err);
     } finally {
@@ -164,15 +167,15 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
     }
   };
 
-  // Handle ISO-XML TaskData Download
+  // Handle ISO-XML TaskData Download (Real .zip with TASKDATA/TASKDATA.XML)
   const handleDownloadIsoXml = async () => {
-    if (!isProSimulated && onRequirePro) {
-      onRequirePro('vra_unlock');
-      return;
-    }
     setIsExportingVra(true);
     try {
-      await downloadIsoXmlZip(activePrescription, data.coordinates.lat, data.coordinates.lon);
+      await downloadIsoXmlZip(
+        activePrescription,
+        data.coordinates.lat,
+        data.coordinates.lon
+      );
     } catch (err) {
       console.error('Failed to export ISO-XML:', err);
     } finally {

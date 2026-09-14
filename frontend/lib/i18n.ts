@@ -223,6 +223,16 @@ export const translations = {
     notesPlaceholder: 'Descreva sintomas visíveis, extensão da mancha ou recomendação...',
     attachPhoto: 'Anexar Fotografia Georreferenciada',
     recordPinBtn: 'Registar no Mapa',
+
+    // Theme & Drawing
+    themeDark: 'Dark Tech',
+    themeLight: 'Modo Campo',
+    drawParcel: 'Desenhar Talhão',
+    drawingActive: 'Modo Desenho Ativo (Clique no mapa)',
+    finishDrawing: 'Concluir Talhão',
+    undoPoint: 'Desfazer Ponto',
+    cancelDrawing: 'Cancelar',
+    importParcelBtn: 'Importar Parcela',
   },
 
   en: {
@@ -442,5 +452,15 @@ export const translations = {
     notesPlaceholder: 'Describe visible foliar symptoms, hotspot extent or immediate intervention...',
     attachPhoto: 'Attach Georeferenced Photo',
     recordPinBtn: 'Save to Map',
+
+    // Theme & Drawing
+    themeDark: 'Dark Tech',
+    themeLight: 'Field Mode',
+    drawParcel: 'Draw Field',
+    drawingActive: 'Drawing Mode (Click on map to add vertices)',
+    finishDrawing: 'Finish Field',
+    undoPoint: 'Undo Point',
+    cancelDrawing: 'Cancel',
+    importParcelBtn: 'Import Parcel',
   },
 };

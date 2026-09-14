@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic';
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { ScoutingRecord } from '../lib/scouting/scoutingStore';
-
 import { Language } from '../lib/i18n';
 
 interface MapWrapperProps {
@@ -16,11 +15,20 @@ interface MapWrapperProps {
   scoutingRecords?: ScoutingRecord[];
   isScoutingModeActive?: boolean;
   onToggleScoutingMode?: () => void;
+  isDrawingModeActive?: boolean;
+  onToggleDrawingMode?: () => void;
+  onPolygonCreated?: (
+    polygon: [number, number][],
+    areaHectares: number,
+    centerLat: number,
+    centerLon: number
+  ) => void;
   onSelectCoordinate: (lat: number, lon: number) => void;
   onScoutCoordinateClick?: (lat: number, lon: number) => void;
   onDeleteScoutingRecord?: (id: string) => void;
   onCenterChange?: (centerLat: number, centerLon: number) => void;
   lang?: Language;
+  theme?: 'dark' | 'light';
   disabled?: boolean;
 }
 

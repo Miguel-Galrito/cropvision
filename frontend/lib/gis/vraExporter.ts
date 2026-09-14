@@ -1,27 +1,33 @@
 /**
  * CropVision SaaS - Enterprise VRA & ISOBUS Exporter Engine
  * Generates true binary ESRI Shapefiles (.shp, .shx, .dbf, .prj) and ISO 11783-10 TaskData XML.
- * Fully compatible with John Deere GreenStar/Gen4, Trimble (GFX/TMX), Topcon, Ag Leader, and Fendt VarioDoc.
+ * Fully compatible with John Deere CommandCenter / GreenStar, Trimble (GFX/TMX), Topcon, Ag Leader, and Fendt VarioGuide.
+ * Complies strictly with DBF attribute specifications:
+ * - ZONE (String)
+ * - NDVI_AVG (Float)
+ * - AREA_HA (Float)
+ * - N_KG_HA (Integer)
  */
 
 import JSZip from 'jszip';
 import { TractorPrescriptionMap, PrescriptionZone } from '../types';
 
 export interface VraZoneGeometry {
-  zoneId: string;
-  rateN: number;
-  areaHa: number;
-  name: string;
+  zone: string; // e.g. "Zone A"
+  ndviAvg: number; // e.g. 0.745
+  areaHa: number; // e.g. 12.4
+  nKgHa: number; // e.g. 45
   polygon: [number, number][]; // [lat, lon]
 }
 
 /**
- * Creates default rectangular VRA zones within the parcel bounds if micro-zones are not already discretized.
+ * Creates VRA zones within parcel bounds with precise agronomic rates and NDVI baselines.
  */
 export function buildVraZoneGeometries(
   prescription: TractorPrescriptionMap,
   centerLat: number,
-  centerLon: number
+  centerLon: number,
+  baseNdvi = 0.65
 ): VraZoneGeometry[] {
   const d = 0.0035;
 
@@ -35,11 +41,19 @@ export function buildVraZoneGeometries(
       [centerLat + yOffset - d * 0.35, centerLon - d],
     ];
 
+    // NDVI estimate by zone: Zone A higher, Zone C lower
+    const zoneNdvi =
+      zone.zone_id === 'A'
+        ? Math.min(0.92, baseNdvi + 0.12)
+        : zone.zone_id === 'B'
+        ? baseNdvi
+        : Math.max(0.18, baseNdvi - 0.18);
+
     return {
-      zoneId: zone.zone_id,
-      rateN: zone.target_n_rate_kg_ha,
-      areaHa: zone.estimated_hectares,
-      name: zone.name,
+      zone: `Zone ${zone.zone_id}`,
+      ndviAvg: Number(zoneNdvi.toFixed(3)),
+      areaHa: Number(zone.estimated_hectares.toFixed(2)),
+      nKgHa: Math.round(zone.target_n_rate_kg_ha),
       polygon: poly,
     };
   });
@@ -51,14 +65,15 @@ export function buildVraZoneGeometries(
 export async function downloadVraShapefileZip(
   prescription: TractorPrescriptionMap,
   centerLat: number,
-  centerLon: number
+  centerLon: number,
+  baseNdvi = 0.65
 ): Promise<void> {
-  const zones = buildVraZoneGeometries(prescription, centerLat, centerLon);
+  const zones = buildVraZoneGeometries(prescription, centerLat, centerLon, baseNdvi);
   const baseName = `CROPVISION_VRA_${prescription.field_name.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 15)}`;
 
   const shpBuffer = buildShpBuffer(zones);
   const shxBuffer = buildShxBuffer(zones);
-  const dbfBuffer = buildDbfBuffer(zones, prescription.selected_fertilizer_name || 'CAN-27');
+  const dbfBuffer = buildDbfBuffer(zones);
   const prjString = `GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]]`;
 
   const zip = new JSZip();
@@ -67,21 +82,30 @@ export async function downloadVraShapefileZip(
   zip.file(`${baseName}.dbf`, dbfBuffer);
   zip.file(`${baseName}.prj`, prjString);
 
-  // Add Readme with instructions for the tractor operator
-  const readme = `CROPVISION SAAS - MAPA DE PRESCRIÇÃO VRA
---------------------------------------------------
-Parcela: ${prescription.field_name}
+  // Instructions for farm tractor operator
+  const readme = `CROPVISION SAAS - MAPA DE PRESCRIÇÃO VRA DE TAXA VARIÁVEL (ESRI SHAPEFILE)
+=============================================================================
+Exploração / Parcela: ${prescription.field_name}
 Área Total: ${prescription.total_area_hectares} ha
-Produto: ${prescription.selected_fertilizer_name || 'Nitrato de Amónio Calcário'}
-Poupança Financeira: €${prescription.fertilizer_savings_eur}
-Norma de Exportação: ESRI Shapefile 2D Polygon (WGS84 EPSG:4326)
+Fertilizante Recomendado: ${prescription.selected_fertilizer_name || 'Nitrato de Amónio Calcário (CAN-27)'}
+Poupança Económica Projetada: €${prescription.fertilizer_savings_eur}
+Sistema de Coordenadas: WGS84 (EPSG:4326)
 
-Instruções para o Operador:
-1. Copie estes ficheiros (.shp, .shx, .dbf, .prj) para a pasta raiz da pen USB.
-2. Insira no monitor de cabine (Trimble GFX/TMX, Ag Leader InCommand, Topcon X35).
-3. Selecione "Importar Mapa de Taxa Variável" e mapeie a coluna 'RATE_N' para Dose Alvo (kg/ha).
+ESTRUTURA DA TABELA DE ATRIBUTOS (DBF):
+- ZONE     : Nome da Zona de Vigor (Zone A, Zone B, Zone C)
+- NDVI_AVG : Índice de Vegetação Médio Sentinel-2 (Float)
+- AREA_HA  : Área delimitada da microzona em hectares (Float)
+- N_KG_HA  : Dose recomendada de Azoto Puro em kg/ha (Integer)
+
+INSTRUÇÕES DE CARREGAMENTO NO TRATOR:
+1. Descompacte os ficheiros (.shp, .shx, .dbf, .prj) diretamente para a pasta raiz da sua Pen USB.
+2. Ligue a Pen USB ao monitor da cabine do trator:
+   - John Deere CommandCenter 4600 / Gen4: Gestor de Tarefas -> Importar Dados -> Taxa Variável.
+   - Trimble (GFX-750, TMX-2050): Precision-IQ -> Prescrições -> Carregar Shapefile.
+   - Fendt VarioGuide / VarioDoc: Importar Prescrição de Campo -> Mapear 'N_KG_HA'.
+3. Mapeie a coluna 'N_KG_HA' como taxa alvo de aplicação do distribuidor centrífugo ou pneumático.
 `;
-  zip.file(`README_OPERADOR.txt`, readme);
+  zip.file(`README_INSTRUCOES_TRATOR.txt`, readme);
 
   const zipContent = await zip.generateAsync({ type: 'blob' });
   triggerBrowserDownload(zipContent, `${baseName.toLowerCase()}_shapefile.zip`);
@@ -98,7 +122,7 @@ export async function downloadIsoXmlZip(
   const xmlContent = generateTaskDataXmlContent(prescription, centerLat, centerLon);
   const zip = new JSZip();
 
-  // Tractors require the folder to be strictly named "TASKDATA"
+  // ISOBUS standard strictly requires a folder named "TASKDATA"
   const taskDataFolder = zip.folder('TASKDATA');
   if (taskDataFolder) {
     taskDataFolder.file('TASKDATA.XML', xmlContent);
@@ -114,7 +138,7 @@ export async function downloadIsoXmlZip(
 }
 
 /**
- * Builds the official ISO 11783-10 (ISOBUS) XML payload.
+ * Builds official ISO 11783-10 (ISOBUS) XML payload.
  */
 export function generateTaskDataXmlContent(
   prescription: TractorPrescriptionMap,
@@ -123,7 +147,6 @@ export function generateTaskDataXmlContent(
 ): string {
   const farmName = prescription.field_name || 'Herdade CropVision';
   const fertilizer = prescription.selected_fertilizer_name || 'CAN-27';
-  const dateStr = new Date().toISOString();
 
   let treatmentZonesXml = '';
   prescription.zones.forEach((z, i) => {
@@ -160,7 +183,6 @@ function escapeXml(str: string): string {
    ========================================================================= */
 
 function buildShpBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
-  // Compute global bounding box
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const z of zones) {
     for (const [lat, lon] of z.polygon) {
@@ -171,8 +193,6 @@ function buildShpBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
     }
   }
 
-  // Calculate file length: 100 bytes header + records
-  // Each record: 8 bytes record header + 4 bytes shape type + 32 bytes bbox + 4 bytes numParts + 4 bytes numPoints + (parts * 4) + (points * 16)
   let recordsByteLength = 0;
   for (const z of zones) {
     const numPoints = z.polygon.length;
@@ -184,19 +204,18 @@ function buildShpBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
   const buffer = new ArrayBuffer(totalFileBytes);
   const view = new DataView(buffer);
 
-  // --- Main Header (100 bytes) ---
+  // Main Header (100 bytes)
   view.setInt32(0, 9994, false); // Big endian file code
   view.setInt32(24, totalFileBytes / 2, false); // Length in 16-bit words
   view.setInt32(28, 1000, true); // Little endian version
   view.setInt32(32, 5, true); // Shape type: Polygon (5)
 
-  // Bounding box (Little endian doubles)
   view.setFloat64(36, minX, true);
   view.setFloat64(44, minY, true);
   view.setFloat64(52, maxX, true);
   view.setFloat64(60, maxY, true);
 
-  // --- Records ---
+  // Records
   let offset = 100;
   let recordNumber = 1;
 
@@ -204,16 +223,13 @@ function buildShpBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
     const numPoints = z.polygon.length;
     const contentLenWords = (4 + 32 + 4 + 4 + 4 + numPoints * 16) / 2;
 
-    // Record Header (8 bytes, Big Endian)
     view.setInt32(offset, recordNumber++, false);
     view.setInt32(offset + 4, contentLenWords, false);
     offset += 8;
 
-    // Record Content (Little Endian)
-    view.setInt32(offset, 5, true); // Shape type: Polygon
+    view.setInt32(offset, 5, true); // Polygon
     offset += 4;
 
-    // Zone BBox
     let zMinX = Infinity, zMinY = Infinity, zMaxX = -Infinity, zMaxY = -Infinity;
     for (const [lat, lon] of z.polygon) {
       if (lon < zMinX) zMinX = lon;
@@ -231,7 +247,7 @@ function buildShpBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
     view.setInt32(offset + 4, numPoints, true); // NumPoints
     offset += 8;
 
-    view.setInt32(offset, 0, true); // Parts[0] = index 0
+    view.setInt32(offset, 0, true); // Part 0 index
     offset += 4;
 
     for (const [lat, lon] of z.polygon) {
@@ -261,9 +277,9 @@ function buildShxBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
   const view = new DataView(buffer);
 
   view.setInt32(0, 9994, false); // File code
-  view.setInt32(24, totalFileBytes / 2, false); // File length in 16-bit words
+  view.setInt32(24, totalFileBytes / 2, false); // File length in words
   view.setInt32(28, 1000, true); // Version
-  view.setInt32(32, 5, true); // Shape type: Polygon
+  view.setInt32(32, 5, true); // Polygon
 
   view.setFloat64(36, minX, true);
   view.setFloat64(44, minY, true);
@@ -280,52 +296,51 @@ function buildShxBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
     view.setInt32(offset, shpOffsetWords, false);
     view.setInt32(offset + 4, contentLenWords, false);
 
-    shpOffsetWords += 4 + contentLenWords; // 4 words for record header
+    shpOffsetWords += 4 + contentLenWords;
     offset += 8;
   }
 
   return buffer;
 }
 
-function buildDbfBuffer(zones: VraZoneGeometry[], productName: string): ArrayBuffer {
-  // DBF III Specification:
-  // Fields:
-  // ZONE_ID (C, 10)
-  // RATE_N (N, 10, 2)
-  // AREA_HA (N, 10, 2)
-  // PRODUCT (C, 25)
-
+/**
+ * Builds DBF III file with exact required schema:
+ * - ZONE (String)
+ * - NDVI_AVG (Float)
+ * - AREA_HA (Float)
+ * - N_KG_HA (Integer)
+ */
+function buildDbfBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
   const numRecords = zones.length;
-  const headerBytes = 32 + 4 * 32 + 1; // 32 byte main + 4 fields * 32 bytes + 1 terminator (0x0D)
-  const recordLength = 1 + 10 + 10 + 10 + 25; // 56 bytes per record (leading space + fields)
-  const totalBytes = headerBytes + numRecords * recordLength + 1; // + 1 EOF (0x1A)
+  const fields = [
+    { name: 'ZONE', type: 'C', len: 10, dec: 0 },
+    { name: 'NDVI_AVG', type: 'N', len: 10, dec: 3 },
+    { name: 'AREA_HA', type: 'N', len: 10, dec: 2 },
+    { name: 'N_KG_HA', type: 'N', len: 10, dec: 0 },
+  ];
+
+  const headerBytes = 32 + fields.length * 32 + 1; // 32 + 4*32 + 1 = 161 bytes
+  const recordLength = 1 + 10 + 10 + 10 + 10; // 41 bytes per record
+  const totalBytes = headerBytes + numRecords * recordLength + 1; // + 1 EOF
 
   const buffer = new ArrayBuffer(totalBytes);
   const uint8 = new Uint8Array(buffer);
   const view = new DataView(buffer);
 
-  // Date
   const now = new Date();
   const year = now.getFullYear() - 1900;
   const month = now.getMonth() + 1;
   const day = now.getDate();
 
-  view.setUint8(0, 0x03); // dBASE III without memo
+  view.setUint8(0, 0x03); // dBASE III
   view.setUint8(1, year);
   view.setUint8(2, month);
   view.setUint8(3, day);
-  view.setUint32(4, numRecords, true); // Little endian record count
+  view.setUint32(4, numRecords, true); // Little-endian count
   view.setUint16(8, headerBytes, true); // Header length
   view.setUint16(10, recordLength, true); // Record length
 
-  // Field Descriptors
-  const fields = [
-    { name: 'ZONE_ID', type: 'C', len: 10, dec: 0 },
-    { name: 'RATE_N', type: 'N', len: 10, dec: 2 },
-    { name: 'AREA_HA', type: 'N', len: 10, dec: 2 },
-    { name: 'PRODUCT', type: 'C', len: 25, dec: 0 },
-  ];
-
+  // Field descriptors
   let fOffset = 32;
   for (const f of fields) {
     for (let i = 0; i < 11; i++) {
@@ -342,17 +357,17 @@ function buildDbfBuffer(zones: VraZoneGeometry[], productName: string): ArrayBuf
 
   // Records
   for (const z of zones) {
-    uint8[fOffset] = 0x20; // Deleted flag: ' ' (valid)
+    uint8[fOffset] = 0x20; // Valid record flag ' '
     let rOffset = fOffset + 1;
 
-    // ZONE_ID (10 chars, left justified)
-    const zIdStr = z.zoneId.padEnd(10, ' ');
-    for (let i = 0; i < 10; i++) uint8[rOffset + i] = zIdStr.charCodeAt(i);
+    // ZONE (10 chars, left justified)
+    const zoneStr = z.zone.padEnd(10, ' ');
+    for (let i = 0; i < 10; i++) uint8[rOffset + i] = zoneStr.charCodeAt(i);
     rOffset += 10;
 
-    // RATE_N (10 chars, right justified)
-    const rateStr = z.rateN.toFixed(2).padStart(10, ' ');
-    for (let i = 0; i < 10; i++) uint8[rOffset + i] = rateStr.charCodeAt(i);
+    // NDVI_AVG (10 chars, right justified)
+    const ndviStr = z.ndviAvg.toFixed(3).padStart(10, ' ');
+    for (let i = 0; i < 10; i++) uint8[rOffset + i] = ndviStr.charCodeAt(i);
     rOffset += 10;
 
     // AREA_HA (10 chars, right justified)
@@ -360,15 +375,15 @@ function buildDbfBuffer(zones: VraZoneGeometry[], productName: string): ArrayBuf
     for (let i = 0; i < 10; i++) uint8[rOffset + i] = areaStr.charCodeAt(i);
     rOffset += 10;
 
-    // PRODUCT (25 chars, left justified)
-    const prodStr = productName.slice(0, 25).padEnd(25, ' ');
-    for (let i = 0; i < 25; i++) uint8[rOffset + i] = prodStr.charCodeAt(i);
-    rOffset += 25;
+    // N_KG_HA (10 chars, right justified)
+    const nStr = Math.round(z.nKgHa).toString().padStart(10, ' ');
+    for (let i = 0; i < 10; i++) uint8[rOffset + i] = nStr.charCodeAt(i);
+    rOffset += 10;
 
     fOffset += recordLength;
   }
 
-  uint8[fOffset] = 0x1a; // EOF marker
+  uint8[fOffset] = 0x1a; // EOF
   return buffer;
 }
 

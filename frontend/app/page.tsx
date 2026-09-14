@@ -38,6 +38,7 @@ import {
   IrrigationType,
   TrainingSystem,
 } from '../lib/irrigation/fao56';
+import { fetchAgroClimate } from '../lib/weather/openMeteo';
 import { generateAgronomicPdfReport } from '../lib/report/pdfReport';
 import { Language, translations } from '../lib/i18n';
 import { AlertTriangle } from 'lucide-react';
@@ -68,8 +69,33 @@ export default function DashboardPage() {
 
   const t = translations[lang] || translations.pt;
 
-  // 2. Commercial Quota & Web Summit Pitch Mode State
-  // Default is Web Summit VIP Mode (unlimited analyses)
+  // 2. Theme State: Dark Tech vs Modo Campo (Light Field Mode)
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem('cropvision_theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        setTheme(savedTheme);
+      }
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem('cropvision_theme', next);
+      } catch {
+        // Ignore
+      }
+      return next;
+    });
+  };
+
+  // 3. Commercial Quota & Web Summit Pitch Mode State
   const [isWebSummitMode, setIsWebSummitMode] = useState<boolean>(true);
   const [dailyUsage, setDailyUsage] = useState<number>(0);
 
@@ -132,38 +158,41 @@ export default function DashboardPage() {
     }
   };
 
-  // 3. Farms & Active Parcel State
+  // 4. Farms & Active Parcel State
   const [farms, setFarms] = useState<FarmModel[]>([]);
   const [activeFarmId, setActiveFarmIdState] = useState<string>('farm-esporao');
   const [activeParcel, setActiveParcel] = useState<ParcelModel | null>(null);
 
-  // 4. Map Navigation & Target State
+  // 5. Map Navigation & Target State
   const [lat, setLat] = useState<number>(38.3842);
   const [lon, setLon] = useState<number>(-7.5519);
   const [zoom, setZoom] = useState<number>(14);
   const [currentPolygon, setCurrentPolygon] = useState<[number, number][] | null>(null);
   const [locationName, setLocationName] = useState<string | null>('Herdade do Esporão, Alentejo, Portugal');
 
-  // 5. Crop & Agronomic Metadata
+  // Interactive Polygon Drawing Mode
+  const [isDrawingModeActive, setIsDrawingModeActive] = useState<boolean>(false);
+
+  // 6. Crop & Agronomic Metadata
   const [cropType, setCropType] = useState<CropType>('vinha');
   const [trainingSystem, setTrainingSystem] = useState<TrainingSystem>('intensivo');
   const [irrigationType, setIrrigationType] = useState<IrrigationType>('gota-a-gota');
   const [agronomistName, setAgronomistName] = useState<string>('Eng. Agrónomo Miguel Silva');
   const [licenseNumber, setLicenseNumber] = useState<string>('OE-AGR-49120');
 
-  // 6. Scouting State
+  // 7. Scouting State
   const [scoutingRecords, setScoutingRecords] = useState<ScoutingRecord[]>([]);
   const [isScoutingModeActive, setIsScoutingModeActive] = useState<boolean>(false);
   const [scoutingModalCoord, setScoutingModalCoord] = useState<{ lat: number; lon: number } | null>(null);
 
-  // 7. System & API State
+  // 8. System & API State
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
   const [analysisData, setAnalysisData] = useState<AnalyzeResponse | null>(null);
   const [timeseriesData, setTimeseriesData] = useState<TimeSeriesPoint[] | null>(null);
   const [error, setError] = useState<{ message: string; detail?: any } | null>(null);
 
-  // 8. Modals & Gating State
+  // 9. Modals & Gating State
   const [isParcelUploaderOpen, setIsParcelUploaderOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
@@ -282,7 +311,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Map Click Coordinate Selection Handler (When NOT in scouting mode)
+  // Map Click Coordinate Selection Handler (When NOT in scouting/drawing mode)
   const handleSelectCoordinate = useCallback(
     (clickedLat: number, clickedLon: number) => {
       if (!isWebSummitMode && dailyUsage >= 3) {
@@ -364,6 +393,19 @@ export default function DashboardPage() {
     runAnalysis(centerLat, centerLon, areaHectares);
   };
 
+  // Polygon Created from Interactive Map Drawing
+  const handlePolygonDrawn = (
+    polygon: [number, number][],
+    areaHectares: number,
+    centerLat: number,
+    centerLon: number
+  ) => {
+    const parcelCount = (farms.find((f) => f.id === activeFarmId)?.parcels.length || 0) + 1;
+    const drawnName = lang === 'en' ? `Field ${parcelCount} (Drawn)` : `Talhão ${parcelCount} (Desenhado)`;
+    handleCustomParcelLoaded(polygon, centerLat, centerLon, areaHectares, drawnName);
+    setIsDrawingModeActive(false);
+  };
+
   // Save Farm Settings
   const handleSaveSettings = (updated: {
     farmName: string;
@@ -427,6 +469,13 @@ export default function DashboardPage() {
       trainingSystem
     );
 
+    let climateData = null;
+    try {
+      climateData = await fetchAgroClimate(lat, lon);
+    } catch {
+      // Ignore if offline
+    }
+
     await generateAgronomicPdfReport({
       analysisData,
       prescription,
@@ -449,6 +498,8 @@ export default function DashboardPage() {
           : (lang === 'en' ? 'Drip Irrigation' : 'Gota-a-gota (Drip)'),
       agronomistName,
       licenseNumber,
+      polygon: currentPolygon || activeParcel?.polygon,
+      agroClimate: climateData,
       lang,
     });
   };
@@ -456,7 +507,11 @@ export default function DashboardPage() {
   const activeFarm = farms.find((f) => f.id === activeFarmId) || farms[0];
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#070b14] select-none">
+    <div
+      className={`relative w-screen h-screen overflow-hidden select-none transition-colors ${
+        theme === 'light' ? 'theme-light bg-[#f8fafc]' : 'bg-[#070b14]'
+      }`}
+    >
       {/* 1. TOP HEADER NAVBAR */}
       <Navbar
         apiHealthy={apiHealthy}
@@ -466,8 +521,12 @@ export default function DashboardPage() {
         farms={farms}
         activeFarmId={activeFarmId}
         lang={lang}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
         onLanguageChange={handleLanguageChange}
         onSelectFarm={handleSelectFarm}
+        isDrawingModeActive={isDrawingModeActive}
+        onToggleDrawingMode={() => setIsDrawingModeActive(!isDrawingModeActive)}
         onOpenPricing={() => {
           setPricingReason('generic');
           setIsPricingOpen(true);
@@ -489,7 +548,11 @@ export default function DashboardPage() {
           polygon={currentPolygon}
           scoutingRecords={scoutingRecords}
           isScoutingModeActive={isScoutingModeActive}
+          isDrawingModeActive={isDrawingModeActive}
+          onToggleDrawingMode={() => setIsDrawingModeActive(!isDrawingModeActive)}
+          onPolygonCreated={handlePolygonDrawn}
           lang={lang}
+          theme={theme}
           onToggleScoutingMode={() => setIsScoutingModeActive(!isScoutingModeActive)}
           onSelectCoordinate={handleSelectCoordinate}
           onScoutCoordinateClick={handleScoutMapClick}
@@ -527,6 +590,7 @@ export default function DashboardPage() {
           data={analysisData}
           timeseries={timeseriesData}
           lang={lang}
+          theme={theme}
           cropType={cropType}
           trainingSystem={trainingSystem}
           irrigationType={irrigationType}
@@ -545,11 +609,13 @@ export default function DashboardPage() {
       )}
 
       {/* 6. MODALS */}
-      {/* Parcel Uploader (Shapefile .zip, GeoJSON, KML) */}
+      {/* Parcel Uploader (Shapefile .zip, GeoJSON, KML + Interactive Draw) */}
       <ParcelUploader
         isOpen={isParcelUploaderOpen}
         onClose={() => setIsParcelUploaderOpen(false)}
         lang={lang}
+        theme={theme}
+        onStartDrawing={() => setIsDrawingModeActive(true)}
         onSelectParcel={handleCustomParcelLoaded}
       />
 

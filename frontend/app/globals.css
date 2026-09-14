@@ -77,6 +77,81 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ==========================================================================
+   Corporate Field Mode (Light Theme for High Sunlight / Field Tablets)
+   ========================================================================== */
+.theme-light {
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+.theme-light .glass-panel {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+}
+
+.theme-light .glass-panel-subtle {
+  background: rgba(248, 250, 252, 0.9) !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.theme-light .bg-\[\#070b14\] {
+  background-color: #f8fafc !important;
+}
+
+.theme-light .bg-\[\#090d16\] {
+  background-color: #ffffff !important;
+}
+
+.theme-light .bg-\[\#0b101b\] {
+  background-color: #ffffff !important;
+}
+
+.theme-light .bg-slate-900,
+.theme-light .bg-slate-900\/60,
+.theme-light .bg-slate-900\/80,
+.theme-light .bg-slate-900\/90,
+.theme-light .bg-slate-900\/95 {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+.theme-light .bg-slate-950,
+.theme-light .bg-slate-950\/40,
+.theme-light .bg-slate-950\/80 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.theme-light .text-white {
+  color: #0f172a !important;
+}
+
+.theme-light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+.theme-light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.theme-light .text-slate-400 {
+  color: #64748b !important;
+}
+
+.theme-light .border-slate-800,
+.theme-light .border-slate-800\/60,
+.theme-light .border-slate-800\/80,
+.theme-light .border-slate-800\/90,
+.theme-light .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
@@ -101,8 +176,18 @@ body {
    ========================================================================== */
 @media print {
   @page {
-    margin: 1.0cm 1.2cm;
+    margin: 0;
     size: A4 portrait;
+  }
+
+  .page-break-after-p1 {
+    page-break-after: always !important;
+    page-break-inside: avoid !important;
+  }
+
+  .page-p2 {
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   *, *::before, *::after {
