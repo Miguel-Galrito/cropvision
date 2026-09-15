@@ -43,22 +43,29 @@ body {
 
 /* Custom Leaflet Map Styling */
 .leaflet-container {
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
   background: #090d16 !important;
   font-family: inherit;
+  position: relative;
+  overflow: hidden;
 }
 
-/* Ensure satellite tiles are permanently visible and transparent drawing layers */
-.leaflet-tile-pane {
-  opacity: 1 !important;
-  visibility: visible !important;
-  z-index: 200 !important;
-}
-
+/* Ensure Tailwind preflight does NOT collapse or corrupt Leaflet tiles */
+.leaflet-container img,
+.leaflet-pane img,
+.leaflet-tile-pane img,
 .leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+  width: auto;
+  padding: 0;
+}
+
+/* Ensure satellite tile layer and panes maintain proper z-index and visibility */
+.leaflet-tile-pane {
+  z-index: 200 !important;
   opacity: 1 !important;
-  visibility: visible !important;
 }
 
 .leaflet-overlay-pane {
@@ -76,12 +83,33 @@ body {
 
 /* Precision Crosshair Cursor for Interactive Drawing and Field Scouting */
 .drawing-mode-active,
+.drawing-mode-active *,
 .drawing-mode-active .leaflet-container,
 .drawing-mode-active .leaflet-pane,
 .drawing-mode-active .leaflet-grab,
 .drawing-mode-active .leaflet-tile-pane,
 .drawing-mode-active .leaflet-overlay-pane {
   cursor: crosshair !important;
+}
+
+.drawing-mode-active button,
+.drawing-mode-active button *,
+.drawing-mode-active a,
+.drawing-mode-active [role="button"] {
+  cursor: pointer !important;
+}
+
+.scouting-mode-active,
+.scouting-mode-active *,
+.scouting-mode-active .leaflet-container,
+.scouting-mode-active .leaflet-pane,
+.scouting-mode-active .leaflet-grab {
+  cursor: crosshair !important;
+}
+
+.scouting-mode-active button,
+.scouting-mode-active button * {
+  cursor: pointer !important;
 }
 
 .custom-pulsing-marker {

@@ -82,6 +82,7 @@ export const Map: React.FC<MapProps> = ({
   const polygonLayerRef = useRef<LeafletPolygon | null>(null);
   const tempDrawGroupRef = useRef<LayerGroup | null>(null);
   const scoutingMarkersRef = useRef<Marker[]>([]);
+  const leafletModuleRef = useRef<typeof import('leaflet') | null>(null);
 
   // Basemap and Visual Layer State
   const [basemap, setBasemap] = useState<BasemapMode>('satellite');
@@ -126,6 +127,7 @@ export const Map: React.FC<MapProps> = ({
 
     import('leaflet').then((L) => {
       if (!isMounted || mapInstanceRef.current || !mapContainerRef.current) return;
+      leafletModuleRef.current = L;
 
       const map = L.map(mapContainerRef.current, {
         center: [lat, lon],
@@ -241,16 +243,21 @@ export const Map: React.FC<MapProps> = ({
     const map = mapInstanceRef.current;
     const { satellite, hybridLabels, streets } = tileLayersRef.current;
 
-    if (satellite && map.hasLayer(satellite)) map.removeLayer(satellite);
-    if (hybridLabels && map.hasLayer(hybridLabels)) map.removeLayer(hybridLabels);
-    if (streets && map.hasLayer(streets)) map.removeLayer(streets);
+    const targetLayer =
+      basemap === 'satellite' ? satellite : basemap === 'hybrid' ? hybridLabels : streets;
 
-    if (basemap === 'satellite') {
-      if (satellite) satellite.addTo(map);
-    } else if (basemap === 'hybrid') {
-      if (hybridLabels) hybridLabels.addTo(map);
-    } else if (basemap === 'streets') {
-      if (streets) streets.addTo(map);
+    if (satellite && satellite !== targetLayer && map.hasLayer(satellite)) {
+      map.removeLayer(satellite);
+    }
+    if (hybridLabels && hybridLabels !== targetLayer && map.hasLayer(hybridLabels)) {
+      map.removeLayer(hybridLabels);
+    }
+    if (streets && streets !== targetLayer && map.hasLayer(streets)) {
+      map.removeLayer(streets);
+    }
+
+    if (targetLayer && !map.hasLayer(targetLayer)) {
+      targetLayer.addTo(map);
     }
   }, [basemap]);
 
@@ -340,30 +347,14 @@ export const Map: React.FC<MapProps> = ({
     });
   }, [polygon, visualMode, ndviOpacity]);
 
-  // Ensure satellite tiles remain mounted, 100% visible and responsive when toggling drawing mode
+  // Reset temporary drawing layers when drawing mode is deactivated
   useEffect(() => {
-    if (!mapInstanceRef.current) return;
-    const map = mapInstanceRef.current;
-
-    // Invalidate size immediately and after short tick to ensure no black/blank tile freeze
-    map.invalidateSize();
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 60);
-
-    // Keep active basemap tiles at 100% opacity
-    if (tileLayersRef.current.satellite) {
-      tileLayersRef.current.satellite.setOpacity(1);
-    }
-
     if (!isDrawingModeActive) {
       if (tempDrawGroupRef.current) {
         tempDrawGroupRef.current.clearLayers();
       }
       setDrawingPoints([]);
     }
-
-    return () => clearTimeout(timer);
   }, [isDrawingModeActive]);
 
   // Render Temporary Interactive Drawing Points & Polygon
@@ -374,7 +365,7 @@ export const Map: React.FC<MapProps> = ({
 
     if (!isDrawingModeActive || drawingPoints.length === 0) return;
 
-    import('leaflet').then((L) => {
+    const renderDrawing = (L: typeof import('leaflet')) => {
       // Draw vertex markers
       drawingPoints.forEach(([pLat, pLon], idx) => {
         const isFirst = idx === 0;
@@ -423,7 +414,16 @@ export const Map: React.FC<MapProps> = ({
         });
         group.addLayer(tempPoly);
       }
-    });
+    };
+
+    if (leafletModuleRef.current) {
+      renderDrawing(leafletModuleRef.current);
+    } else {
+      import('leaflet').then((L) => {
+        leafletModuleRef.current = L;
+        renderDrawing(L);
+      });
+    }
   }, [isDrawingModeActive, drawingPoints, lang]);
 
   // Render Scouting Markers on Leaflet Map
@@ -513,10 +513,6 @@ export const Map: React.FC<MapProps> = ({
     if (onPolygonCreated) {
       onPolygonCreated(pointsToFinish, areaHa, center[0], center[1]);
     }
-
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.invalidateSize();
-    }
   };
 
   const handleUndoPoint = () => {
@@ -532,32 +528,30 @@ export const Map: React.FC<MapProps> = ({
     if (onToggleDrawingMode) {
       onToggleDrawingMode();
     }
-
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.invalidateSize();
-    }
   };
 
   const currentAreaHa =
     drawingPoints.length >= 3 ? calculatePolygonAreaHectares(drawingPoints) : 0;
 
   return (
-    <div className="relative w-full h-full select-none">
-      {/* Map DOM Container */}
+    <div
+      className={`relative w-full h-full select-none ${
+        isDrawingModeActive
+          ? 'drawing-mode-active cursor-crosshair'
+          : isScoutingModeActive
+          ? 'scouting-mode-active cursor-crosshair'
+          : 'cursor-grab active:cursor-grabbing'
+      }`}
+    >
+      {/* Map DOM Container - Static className to preserve Leaflet internal container classes */}
       <div
         ref={mapContainerRef}
-        className={`w-full h-full z-0 ${
-          isDrawingModeActive
-            ? 'drawing-mode-active cursor-crosshair'
-            : isScoutingModeActive
-            ? 'cursor-crosshair'
-            : 'cursor-grab active:cursor-grabbing'
-        }`}
+        className="w-full h-full z-0 leaflet-container"
       />
 
       {/* FLOATING TOP-CENTER TOOLBAR: Interactive Polygon Drawing Mode */}
       {isDrawingModeActive && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center space-x-2 p-2 px-3.5 rounded-2xl bg-[#090d16]/95 border border-emerald-500/70 shadow-2xl backdrop-blur-md text-xs animate-in fade-in slide-in-from-top-4 duration-150">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center max-w-[95vw] overflow-x-auto no-scrollbar space-x-2 p-2 px-3.5 rounded-2xl bg-[#090d16]/95 border border-emerald-500/70 shadow-2xl backdrop-blur-md text-xs animate-in fade-in slide-in-from-top-4 duration-150">
           <div className="flex items-center space-x-2 text-emerald-400 font-bold pr-2 border-r border-slate-700">
             <PenTool className="w-4 h-4 animate-bounce text-emerald-400" />
             <span>
