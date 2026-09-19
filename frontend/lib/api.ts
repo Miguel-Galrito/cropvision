@@ -193,37 +193,80 @@ async function queryDirectAwsStac(payload: AnalyzeRequest): Promise<AnalyzeRespo
     limit: 1,
   };
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-  let stacData: any = null;
-  try {
-    const res = await fetch(stacUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(stacBody),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    if (res.ok) {
-      stacData = await res.json();
+  // 1. Attempt official Copernicus Data Space Ecosystem (CDSE) retrieval via Next.js route
+  let copernicusData: any = null;
+  if (typeof window !== 'undefined') {
+    try {
+      const copRes = await fetch('/api/satellite/copernicus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lat: payload.lat,
+          lon: payload.lon,
+          max_cloud_cover: payload.max_cloud_cover ?? 30.0,
+        }),
+      });
+      if (copRes.ok) {
+        copernicusData = await copRes.json();
+      }
+    } catch (copErr) {
+      console.warn('[Copernicus API] Fallback to open STAC:', copErr);
     }
-  } catch (err) {
-    clearTimeout(timeoutId);
-    console.warn('[STAC Direct] Query error:', err);
   }
 
+  // 2. Fallback to AWS Element84 Open STAC
+  let stacData: any = null;
+  if (!copernicusData?.latest_scene) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    try {
+      const res = await fetch(stacUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(stacBody),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        stacData = await res.json();
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.warn('[STAC Direct] Query error:', err);
+    }
+  }
+
+  const cdseScene = copernicusData?.latest_scene;
+  const isCdse = copernicusData?.provider?.includes('CDSE Official');
   const feature = stacData?.features?.[0];
   const now = new Date();
-  const sceneId = feature?.id || `S2C_${Math.abs(Math.round(payload.lat * 10))}${Math.abs(Math.round(payload.lon * 10))}_${now.toISOString().slice(0, 10).replace(/-/g, '')}_0_L2A`;
-  const acquisitionDate = feature?.properties?.datetime || now.toISOString();
-  const cloudCover = feature?.properties?.['eo:cloud_cover'] !== undefined
-    ? Number(feature.properties['eo:cloud_cover'].toFixed(2))
-    : 1.2;
+
+  const sceneId =
+    cdseScene?.name ||
+    cdseScene?.id ||
+    feature?.id ||
+    `S2A_${Math.abs(Math.round(payload.lat * 10))}${Math.abs(Math.round(payload.lon * 10))}_${now.toISOString().slice(0, 10).replace(/-/g, '')}_0_L2A`;
+
+  const acquisitionDate =
+    cdseScene?.acquisitionDate ||
+    feature?.properties?.datetime ||
+    now.toISOString();
+
+  const cloudCover =
+    cdseScene?.cloudCoverPct !== undefined
+      ? Number(cdseScene.cloudCoverPct.toFixed(2))
+      : feature?.properties?.['eo:cloud_cover'] !== undefined
+      ? Number(feature.properties['eo:cloud_cover'].toFixed(2))
+      : 1.2;
+
+  const platformName = isCdse
+    ? 'Copernicus Sentinel-2 (CDSE Official ESA)'
+    : 'Sentinel-2 (AWS STAC Direct)';
+
   const sunElev = feature?.properties?.['view:sun_elevation'] || Number((54 + Math.abs(payload.lat * 0.15)).toFixed(1));
   // Extract browser-compatible RGB True Color thumbnail (JPEG/PNG, never raw GeoTIFF)
-  let visualThumb: string | null = null;
-  if (feature?.assets) {
+  let visualThumb: string | null = cdseScene?.quicklookUrl || null;
+  if (!visualThumb && feature?.assets) {
     const thumbAsset = feature.assets.thumbnail?.href || feature.assets.overview?.href || feature.assets.rendered_preview?.href;
     if (thumbAsset && !thumbAsset.toLowerCase().endsWith('.tif') && !thumbAsset.toLowerCase().endsWith('.tiff')) {
       visualThumb = thumbAsset;
