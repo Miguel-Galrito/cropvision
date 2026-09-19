@@ -24,9 +24,13 @@ import {
   Share2,
   Menu,
   X,
+  Users,
+  Tractor,
+  Shield,
 } from 'lucide-react';
 import { FarmModel } from '../lib/gis/parcelStorage';
 import { Language, translations } from '../lib/i18n';
+import { UserRole } from '../lib/team/teamService';
 
 interface NavbarProps {
   apiHealthy: boolean | null;
@@ -52,6 +56,10 @@ interface NavbarProps {
   onOpenComparator?: () => void;
   onOpenRoi?: () => void;
   onShareAudit?: () => void;
+  onOpenTeamManagement?: () => void;
+  onOpenMachineryGuide?: () => void;
+  userRole?: UserRole;
+  onChangeRole?: (role: UserRole) => void;
   activeAnomaliesCount?: number;
 }
 
@@ -79,6 +87,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenComparator,
   onOpenRoi,
   onShareAudit,
+  onOpenTeamManagement,
+  onOpenMachineryGuide,
+  userRole = 'agronomist',
+  onChangeRole,
   activeAnomaliesCount = 3,
 }) => {
   const [isFarmDropdownOpen, setIsFarmDropdownOpen] = useState(false);
@@ -486,6 +498,44 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </div>
                     </button>
                   )}
+
+                  {/* Team & RBAC Management */}
+                  {onOpenTeamManagement && (
+                    <button
+                      onClick={() => {
+                        onOpenTeamManagement();
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2.5 transition-colors ${
+                        isLight ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      }`}
+                    >
+                      <Users className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <div>
+                        <div className="font-bold">{lang === 'en' ? 'Team Management & RBAC' : 'Gestão de Equipa & RBAC'}</div>
+                        <div className="text-[10px] text-slate-400">{lang === 'en' ? 'Roles, audit trail & cab view' : 'Funções, auditoria e modo cabine'}</div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* In-Cab Tractor Setup Guide */}
+                  {onOpenMachineryGuide && (
+                    <button
+                      onClick={() => {
+                        onOpenMachineryGuide();
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2.5 transition-colors ${
+                        isLight ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      }`}
+                    >
+                      <Tractor className="w-4 h-4 text-amber-400 shrink-0" />
+                      <div>
+                        <div className="font-bold">{lang === 'en' ? 'In-Cab Tractor Guide' : 'Guia de Cabine Trator'}</div>
+                        <div className="text-[10px] text-slate-400">John Deere Gen4 / Trimble USB</div>
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -551,13 +601,65 @@ export const Navbar: React.FC<NavbarProps> = ({
                   isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#0c1322] border-slate-700 text-slate-200'
                 }`}
               >
-                {/* Account info */}
+                {/* Account & Role Info */}
                 <div className="px-3 py-2 border-b border-slate-800/80">
-                  <div className="text-xs font-bold truncate">Eng. Agrónomo</div>
-                  <div className="text-[10px] text-slate-400 truncate">{activeFarm?.name}</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold truncate">
+                      {userRole === 'owner'
+                        ? (lang === 'en' ? 'Farm Owner' : 'Proprietário')
+                        : userRole === 'operator'
+                        ? (lang === 'en' ? 'Field Operator' : 'Operador Trator')
+                        : (lang === 'en' ? 'Lead Agronomist' : 'Eng. Agrónomo')}
+                    </span>
+                    <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded uppercase border ${
+                      userRole === 'owner'
+                        ? 'bg-purple-950 text-purple-300 border-purple-500/40'
+                        : userRole === 'operator'
+                        ? 'bg-amber-950 text-amber-300 border-amber-500/40'
+                        : 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                    }`}>
+                      {userRole}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate mt-0.5">{activeFarm?.name}</div>
+
+                  {/* Role Switcher Pill Dock */}
+                  {onChangeRole && (
+                    <div className="mt-2 pt-2 border-t border-slate-800/60 flex items-center gap-1">
+                      {(['owner', 'agronomist', 'operator'] as const).map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => onChangeRole(r)}
+                          className={`flex-1 py-1 rounded-lg text-[9px] font-mono font-bold uppercase transition-all ${
+                            userRole === r
+                              ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                              : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {r === 'owner' ? 'Owner' : r === 'agronomist' ? 'Agro' : 'Oper'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1 mt-2">
+                  {/* Team & RBAC Management */}
+                  {onOpenTeamManagement && (
+                    <button
+                      onClick={() => {
+                        onOpenTeamManagement();
+                        setIsProfileMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 transition-colors ${
+                        isLight ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      }`}
+                    >
+                      <Users className="w-4 h-4 text-emerald-400" />
+                      <span>{lang === 'en' ? 'Team & RBAC' : 'Equipa & Permissões'}</span>
+                    </button>
+                  )}
+
                   {/* Farm Settings */}
                   {onOpenSettings && (
                     <button
@@ -866,6 +968,38 @@ export const Navbar: React.FC<NavbarProps> = ({
                         {activeAnomaliesCount}
                       </span>
                     )}
+                  </button>
+                )}
+
+                {onOpenTeamManagement && (
+                  <button
+                    onClick={() => {
+                      setIsMobileDrawerOpen(false);
+                      onOpenTeamManagement();
+                    }}
+                    className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center space-x-2.5 hover:bg-slate-800/60 transition-colors"
+                  >
+                    <Users className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <div>
+                      <div>{lang === 'en' ? 'Team & RBAC' : 'Gestão de Equipa & RBAC'}</div>
+                      <div className="text-[9px] text-slate-400 font-normal">Funções, auditoria e modo cabine</div>
+                    </div>
+                  </button>
+                )}
+
+                {onOpenMachineryGuide && (
+                  <button
+                    onClick={() => {
+                      setIsMobileDrawerOpen(false);
+                      onOpenMachineryGuide();
+                    }}
+                    className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center space-x-2.5 hover:bg-slate-800/60 transition-colors"
+                  >
+                    <Tractor className="w-4 h-4 text-amber-400 shrink-0" />
+                    <div>
+                      <div>{lang === 'en' ? 'In-Cab Tractor Guide' : 'Guia de Cabine Trator'}</div>
+                      <div className="text-[9px] text-slate-400 font-normal">John Deere / Trimble USB FAT32</div>
+                    </div>
                   </button>
                 )}
               </div>

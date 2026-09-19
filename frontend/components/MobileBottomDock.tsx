@@ -23,6 +23,7 @@ import {
   ChevronUp,
   Tractor,
   Droplets,
+  Users,
 } from 'lucide-react';
 import { Language, translations } from '../lib/i18n';
 
@@ -43,6 +44,8 @@ interface MobileBottomDockProps {
   onOpenComparator?: () => void;
   onOpenRoi?: () => void;
   onShareAudit?: () => void;
+  onOpenTeamManagement?: () => void;
+  onOpenMachineryGuide?: () => void;
   onExportPdf?: () => void;
   onExportConsolidatedPdf?: () => void;
   onOpenSettings?: () => void;
@@ -69,6 +72,8 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
   onOpenComparator,
   onOpenRoi,
   onShareAudit,
+  onOpenTeamManagement,
+  onOpenMachineryGuide,
   onExportPdf,
   onExportConsolidatedPdf,
   onOpenSettings,
@@ -387,6 +392,52 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
                     <div className="font-bold text-xs">{lang === 'en' ? 'Consolidated Estate PDF (1-Click)' : 'Relatório Consolidado da Herdade (1-Click)'}</div>
                     <div className="text-[10px] text-emerald-400/80">
                       {lang === 'en' ? 'Multi-parcel executive audit for banks & IFAP' : 'Auditoria multi-parcelar executiva'}
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {/* Team & RBAC Management */}
+              {onOpenTeamManagement && (
+                <button
+                  onClick={() => {
+                    setIsMoreDrawerOpen(false);
+                    onOpenTeamManagement();
+                  }}
+                  className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                      : 'bg-slate-900/80 border-slate-800 hover:border-emerald-500/40'
+                  }`}
+                >
+                  <Users className="w-5 h-5 text-emerald-400 mb-2" />
+                  <div>
+                    <div className="font-bold text-xs">{lang === 'en' ? 'Team & RBAC' : 'Equipa & Permissões'}</div>
+                    <div className="text-[10px] text-slate-400">
+                      {lang === 'en' ? 'Roles & Cab Mode' : 'Funções e modo cabine'}
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {/* In-Cab Tractor Setup Guide */}
+              {onOpenMachineryGuide && (
+                <button
+                  onClick={() => {
+                    setIsMoreDrawerOpen(false);
+                    onOpenMachineryGuide();
+                  }}
+                  className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all ${
+                    isLight
+                      ? 'bg-amber-50 border-amber-200 text-amber-900'
+                      : 'bg-amber-950/40 border-amber-500/30 text-amber-200 hover:border-amber-500/60'
+                  }`}
+                >
+                  <Tractor className="w-5 h-5 text-amber-400 mb-2" />
+                  <div>
+                    <div className="font-bold text-xs">{lang === 'en' ? 'Tractor Setup Guide' : 'Guia Trator USB'}</div>
+                    <div className="text-[10px] text-amber-400/80">
+                      {lang === 'en' ? 'John Deere / Trimble' : 'John Deere / Trimble'}
                     </div>
                   </div>
                 </button>

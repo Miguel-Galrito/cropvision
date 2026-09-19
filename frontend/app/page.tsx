@@ -13,8 +13,11 @@ import { ScoutingModal } from '../components/ScoutingModal';
 import { FieldBookModal } from '../components/FieldBookModal';
 import { HistoricalComparatorModal } from '../components/HistoricalComparatorModal';
 import { RoiCalculatorModal } from '../components/RoiCalculatorModal';
+import { TeamManagementModal } from '../components/TeamManagementModal';
+import { MachineryGuideModal } from '../components/MachineryGuideModal';
 import { MobileBottomDock } from '../components/MobileBottomDock';
 import { DiseaseRiskAssessment } from '../lib/disease/epidemiology';
+import { UserRole } from '../lib/team/teamService';
 import {
   AnalyzeResponse,
   TimeSeriesPoint,
@@ -215,6 +218,9 @@ export default function DashboardPage() {
   const [isProSimulated, setIsProSimulated] = useState<boolean>(false);
   const [isComparatorOpen, setIsComparatorOpen] = useState<boolean>(false);
   const [isRoiModalOpen, setIsRoiModalOpen] = useState<boolean>(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState<boolean>(false);
+  const [isMachineryGuideOpen, setIsMachineryGuideOpen] = useState<boolean>(false);
+  const [userRole, setUserRole] = useState<UserRole>('agronomist');
   const [auditToastMessage, setAuditToastMessage] = useState<string | null>(null);
 
   const handleShareAudit = useCallback(() => {
@@ -612,6 +618,10 @@ export default function DashboardPage() {
         onShareAudit={handleShareAudit}
         onExportPdf={handleExportPdf}
         onExportConsolidatedPdf={handleExportConsolidatedPdf}
+        onOpenTeamManagement={() => setIsTeamModalOpen(true)}
+        onOpenMachineryGuide={() => setIsMachineryGuideOpen(true)}
+        userRole={userRole}
+        onChangeRole={setUserRole}
         activeAnomaliesCount={3}
       />
 
@@ -685,6 +695,7 @@ export default function DashboardPage() {
           onExportPdf={handleExportPdf}
           onOpenComparator={() => setIsComparatorOpen(true)}
           onOpenRoi={() => setIsRoiModalOpen(true)}
+          onOpenMachineryGuide={() => setIsMachineryGuideOpen(true)}
           onShareAudit={handleShareAudit}
           onOpenScoutingAtCoord={(scoutLat, scoutLon) => {
             setScoutingModalCoord({ lat: scoutLat, lon: scoutLon });
@@ -776,17 +787,43 @@ export default function DashboardPage() {
         initialFertPrefill={fieldBookFertPrefill}
       />
 
-      {/* Notification Center Modal */}
+      {/* Notification Center & Alert Automation Modal */}
       <NotificationCenterModal
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
         lang={lang}
+        farmId={activeFarm?.id || '00000000-0000-0000-0000-000000000001'}
+        currentNdvi={analysisData?.ndvi?.mean ?? 0.52}
+        currentWind={12}
+        currentMoisture={analysisData?.sar_radar?.soil_moisture_estimate_pct ?? 22}
         onFocusAnomaly={() => {
           if (activeParcel) {
             setLat(activeParcel.center[0]);
             setLon(activeParcel.center[1]);
           }
         }}
+      />
+
+      {/* Team Management & B2B RBAC Modal */}
+      <TeamManagementModal
+        isOpen={isTeamModalOpen}
+        onClose={() => setIsTeamModalOpen(false)}
+        farmId={activeFarm?.id || '00000000-0000-0000-0000-000000000001'}
+        farmName={activeFarm?.name || 'Herdade Agrícola'}
+        activeRole={userRole}
+        onRoleChange={setUserRole}
+        lang={lang}
+        theme={theme}
+        currentParcelCoords={activeParcel ? { lat: activeParcel.center[0], lon: activeParcel.center[1] } : { lat, lon }}
+        currentParcelName={activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1')}
+      />
+
+      {/* In-Cab Tractor Setup Guide Modal (John Deere / Trimble / Fendt) */}
+      <MachineryGuideModal
+        isOpen={isMachineryGuideOpen}
+        onClose={() => setIsMachineryGuideOpen(false)}
+        lang={lang}
+        theme={theme}
       />
 
       {/* Scouting Point Registration Modal */}
@@ -882,6 +919,8 @@ export default function DashboardPage() {
         onOpenComparator={() => setIsComparatorOpen(true)}
         onOpenRoi={() => setIsRoiModalOpen(true)}
         onShareAudit={handleShareAudit}
+        onOpenTeamManagement={() => setIsTeamModalOpen(true)}
+        onOpenMachineryGuide={() => setIsMachineryGuideOpen(true)}
         onExportPdf={handleExportPdf}
         onExportConsolidatedPdf={handleExportConsolidatedPdf}
         onOpenSettings={() => setIsSettingsOpen(true)}

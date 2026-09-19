@@ -44,6 +44,7 @@ frontend/out/
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 
 # Whitelist frontend/lib/
 !frontend/lib/

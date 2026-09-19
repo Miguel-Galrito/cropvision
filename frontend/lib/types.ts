@@ -128,6 +128,15 @@ export interface AnalyzeResponse {
   multi_indices?: MultiIndexMetrics;
   spectral_bands?: SpectralBand[];
   climate_metrics?: AgroClimateMetrics;
+  cloud_mask?: {
+    hasInterference: boolean;
+    cloudCoveragePct: number;
+    dominantSclClass?: number;
+    dominantSclLabel?: string;
+    warningMessage: string | null;
+    recommendation: string;
+    sarFallbackRecommended: boolean;
+  };
 }
 
 export interface TimeSeriesPoint {

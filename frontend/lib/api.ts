@@ -14,6 +14,12 @@ import {
   generateSpectralBands,
   generateAgroClimate,
 } from './prescription';
+import {
+  computeAllSpectralIndices,
+  evaluateCloudContamination,
+  SentinelBands,
+} from './satellite/spectralEngine';
+import { fetchAgroClimate } from './weather/openMeteo';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
@@ -261,8 +267,24 @@ async function queryDirectAwsStac(payload: AnalyzeRequest): Promise<AnalyzeRespo
     areaHa
   );
 
-  const multiIndices = generateMultiIndices(ndviMean);
   const spectralBands = generateSpectralBands(ndviMean);
+  const bandMap = Object.fromEntries(spectralBands.map((b) => [b.band, b.reflectance]));
+  const canonicalIndices = computeAllSpectralIndices({
+    B02: bandMap.B02 ?? 0.04,
+    B03: bandMap.B03 ?? 0.08,
+    B04: bandMap.B04 ?? 0.05,
+    B05: bandMap.B05 ?? 0.15,
+    B08: bandMap.B08 ?? 0.42,
+    B11: bandMap.B11 ?? 0.19,
+    SCL: cloudCover > 20 ? 8 : 4,
+  });
+
+  const cloudAssessment = evaluateCloudContamination(
+    cloudCover > 20 ? 8 : 4,
+    cloudCover,
+    acquisitionDate
+  );
+
   const agroClimate = generateAgroClimate(payload.lat, payload.lon, sunElev);
 
   return {
@@ -282,13 +304,13 @@ async function queryDirectAwsStac(payload: AnalyzeRequest): Promise<AnalyzeRespo
     resolution_meters: 10.0,
     pixels_analyzed: 10000,
     ndvi: {
-      mean: ndviMean,
-      min: Number((ndviMean - spread).toFixed(3)),
-      max: Number((ndviMean + spread + 0.03).toFixed(3)),
-      std: Number((0.05 + Math.abs(ndviMean) * 0.03).toFixed(3)),
-      median: Number((ndviMean + (seed * 0.02 - 0.01)).toFixed(3)),
-      p25: Number((ndviMean - spread * 0.5).toFixed(3)),
-      p75: Number((ndviMean + spread * 0.5).toFixed(3)),
+      mean: canonicalIndices.ndvi,
+      min: Number((canonicalIndices.ndvi - spread).toFixed(3)),
+      max: Number((canonicalIndices.ndvi + spread + 0.03).toFixed(3)),
+      std: Number((0.05 + Math.abs(canonicalIndices.ndvi) * 0.03).toFixed(3)),
+      median: Number((canonicalIndices.ndvi + (seed * 0.02 - 0.01)).toFixed(3)),
+      p25: Number((canonicalIndices.ndvi - spread * 0.5).toFixed(3)),
+      p75: Number((canonicalIndices.ndvi + spread * 0.5).toFixed(3)),
     },
     interpretation: interp,
     thumbnail_url: heatmap,
@@ -299,9 +321,10 @@ async function queryDirectAwsStac(payload: AnalyzeRequest): Promise<AnalyzeRespo
     sar_radar: sarRadar,
     prescription_map: prescriptionMap,
     polygon_area_hectares: areaHa,
-    multi_indices: multiIndices,
+    multi_indices: canonicalIndices,
     spectral_bands: spectralBands,
     climate_metrics: agroClimate,
+    cloud_mask: cloudAssessment,
   };
 }
 

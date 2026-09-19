@@ -138,16 +138,51 @@ export async function downloadIsoXmlZip(
 }
 
 /**
- * Builds official ISO 11783-10 (ISOBUS) XML payload.
+ * Builds official ISO 11783-10 (ISOBUS) TaskData XML payload.
+ * Fully compliant with ISO 11783-10:
+ * - <TSK> (Task)
+ * - <PFD> (Partfield with centroid <PNT> and boundary polygon <PLN>/<LSG>)
+ * - <VPN> (Value Presentation Node with rate units in kg/ha)
+ * - <TZN> (Treatment Zones with setpoints <PDV>)
  */
 export function generateTaskDataXmlContent(
   prescription: TractorPrescriptionMap,
   centerLat: number,
-  centerLon: number
+  centerLon: number,
+  fieldPolygon?: [number, number][]
 ): string {
   const farmName = prescription.field_name || 'Herdade CropVision';
   const fertilizer = prescription.selected_fertilizer_name || 'CAN-27';
+  const areaM2 = Math.round(prescription.total_area_hectares * 10000);
 
+  // Polygon boundary coordinates for <PFD> Partfield
+  let pfdBoundaryXml = '';
+  const d = 0.0035;
+  const polyPoints = fieldPolygon && fieldPolygon.length >= 3
+    ? fieldPolygon
+    : [
+        [centerLat - d, centerLon - d],
+        [centerLat - d, centerLon + d],
+        [centerLat + d, centerLon + d],
+        [centerLat + d, centerLon - d],
+        [centerLat - d, centerLon - d],
+      ];
+
+  const lineStringPoints = polyPoints
+    .map(
+      ([lat, lon], idx) =>
+        `      <PNT A="${idx + 1}" C="${Number(lat).toFixed(7)}" D="${Number(lon).toFixed(7)}"/>`
+    )
+    .join('\n');
+
+  pfdBoundaryXml = `
+    <PLN A="1">
+      <LSG A="1">
+${lineStringPoints}
+      </LSG>
+    </PLN>`;
+
+  // Treatment Zones and Setpoints
   let treatmentZonesXml = '';
   prescription.zones.forEach((z, i) => {
     treatmentZonesXml += `
@@ -157,12 +192,15 @@ export function generateTaskDataXmlContent(
   });
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<ISO11783_TaskData VersionMajor="4" VersionMinor="0" ManagementSoftwareManufacturer="CropVision SaaS" ManagementSoftwareVersion="2.5" DataTransferOrigin="1">
-  <CTR A="CTR1" B="CropVision Precision Ag"/>
+<ISO11783_TaskData VersionMajor="4" VersionMinor="0" ManagementSoftwareManufacturer="CropVision SaaS" ManagementSoftwareVersion="3.0" DataTransferOrigin="1">
+  <CTR A="CTR1" B="CropVision AgTech Solutions"/>
   <FRM A="FRM1" B="${escapeXml(farmName)}" I="CTR1"/>
-  <PFD A="PFD1" B="Talhao Principal" C="${centerLat.toFixed(6)}" D="${centerLon.toFixed(6)}" E="FRM1"/>
+  <PFD A="PFD1" B="${escapeXml(prescription.field_name)}" C="${areaM2}" E="FRM1">
+    <PNT A="1" C="${centerLat.toFixed(7)}" D="${centerLon.toFixed(7)}"/>${pfdBoundaryXml}
+  </PFD>
   <PDT A="PDT1" B="${escapeXml(fertilizer)}" C="1"/>
-  <TSK A="TSK1" B="Prescricao Taxa Variavel Azoto" G="1" J="FRM1">
+  <VPN A="VPN1" B="kg/ha" C="kg/ha" D="0" E="0"/>
+  <TSK A="TSK1" B="Prescricao Taxa Variavel Azoto VRA" G="1" J="FRM1" K="PFD1">
     <GGP A="1">${treatmentZonesXml}
     </GGP>
   </TSK>
@@ -305,22 +343,25 @@ function buildShxBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
 
 /**
  * Builds DBF III file with exact required schema:
- * - ZONE (String)
- * - NDVI_AVG (Float)
- * - AREA_HA (Float)
- * - N_KG_HA (Integer)
+ * - ZONE_NAME (String, 10 chars)
+ * - AREA_HA   (Float, 10 chars, 2 dec)
+ * - N_RATE_KG (Integer, 10 chars, target kg N/ha)
+ * - N_TOTAL_KG(Integer, 10 chars, total kg N)
+ * - NDVI_AVG  (Float, 10 chars, 3 dec)
+ * Strictly complies with the 10-character column name limit for John Deere / Trimble / QGIS.
  */
 function buildDbfBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
   const numRecords = zones.length;
   const fields = [
-    { name: 'ZONE', type: 'C', len: 10, dec: 0 },
-    { name: 'NDVI_AVG', type: 'N', len: 10, dec: 3 },
+    { name: 'ZONE_NAME', type: 'C', len: 10, dec: 0 },
     { name: 'AREA_HA', type: 'N', len: 10, dec: 2 },
-    { name: 'N_KG_HA', type: 'N', len: 10, dec: 0 },
+    { name: 'N_RATE_KG', type: 'N', len: 10, dec: 0 },
+    { name: 'N_TOTAL_KG', type: 'N', len: 10, dec: 0 },
+    { name: 'NDVI_AVG', type: 'N', len: 10, dec: 3 },
   ];
 
-  const headerBytes = 32 + fields.length * 32 + 1; // 32 + 4*32 + 1 = 161 bytes
-  const recordLength = 1 + 10 + 10 + 10 + 10; // 41 bytes per record
+  const headerBytes = 32 + fields.length * 32 + 1; // 32 + 5*32 + 1 = 193 bytes
+  const recordLength = 1 + 10 * fields.length; // 1 + 50 = 51 bytes per record
   const totalBytes = headerBytes + numRecords * recordLength + 1; // + 1 EOF
 
   const buffer = new ArrayBuffer(totalBytes);
@@ -340,7 +381,7 @@ function buildDbfBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
   view.setUint16(8, headerBytes, true); // Header length
   view.setUint16(10, recordLength, true); // Record length
 
-  // Field descriptors
+  // Field descriptors (32 bytes each)
   let fOffset = 32;
   for (const f of fields) {
     for (let i = 0; i < 11; i++) {
@@ -360,14 +401,9 @@ function buildDbfBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
     uint8[fOffset] = 0x20; // Valid record flag ' '
     let rOffset = fOffset + 1;
 
-    // ZONE (10 chars, left justified)
-    const zoneStr = z.zone.padEnd(10, ' ');
+    // ZONE_NAME (10 chars, left justified)
+    const zoneStr = z.zone.padEnd(10, ' ').slice(0, 10);
     for (let i = 0; i < 10; i++) uint8[rOffset + i] = zoneStr.charCodeAt(i);
-    rOffset += 10;
-
-    // NDVI_AVG (10 chars, right justified)
-    const ndviStr = z.ndviAvg.toFixed(3).padStart(10, ' ');
-    for (let i = 0; i < 10; i++) uint8[rOffset + i] = ndviStr.charCodeAt(i);
     rOffset += 10;
 
     // AREA_HA (10 chars, right justified)
@@ -375,9 +411,20 @@ function buildDbfBuffer(zones: VraZoneGeometry[]): ArrayBuffer {
     for (let i = 0; i < 10; i++) uint8[rOffset + i] = areaStr.charCodeAt(i);
     rOffset += 10;
 
-    // N_KG_HA (10 chars, right justified)
-    const nStr = Math.round(z.nKgHa).toString().padStart(10, ' ');
-    for (let i = 0; i < 10; i++) uint8[rOffset + i] = nStr.charCodeAt(i);
+    // N_RATE_KG (10 chars, right justified)
+    const nRateStr = Math.round(z.nKgHa).toString().padStart(10, ' ');
+    for (let i = 0; i < 10; i++) uint8[rOffset + i] = nRateStr.charCodeAt(i);
+    rOffset += 10;
+
+    // N_TOTAL_KG (10 chars, right justified)
+    const nTotal = Math.round(z.areaHa * z.nKgHa);
+    const nTotalStr = nTotal.toString().padStart(10, ' ');
+    for (let i = 0; i < 10; i++) uint8[rOffset + i] = nTotalStr.charCodeAt(i);
+    rOffset += 10;
+
+    // NDVI_AVG (10 chars, right justified)
+    const ndviStr = z.ndviAvg.toFixed(3).padStart(10, ' ');
+    for (let i = 0; i < 10; i++) uint8[rOffset + i] = ndviStr.charCodeAt(i);
     rOffset += 10;
 
     fOffset += recordLength;

@@ -114,3 +114,63 @@ CREATE POLICY "Manage field_logs with service role or owner"
         JOIN public.farms ON farms.id = parcels.farm_id
         WHERE parcels.id = field_logs.parcel_id AND farms.user_id = auth.uid()
     ));
+
+-- 8. TABLE: TEAM_MEMBERS (B2B RBAC - Owner, Agronomist, Machine Operator)
+CREATE TABLE IF NOT EXISTS public.team_members (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    farm_id UUID REFERENCES public.farms(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('owner', 'agronomist', 'operator')),
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending', 'revoked')),
+    phone TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE (farm_id, email)
+);
+
+-- 9. TABLE: AUDIT_LOGS (Enterprise Traceability & Agronomic Digital Signature Trail)
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    farm_id UUID REFERENCES public.farms(id) ON DELETE CASCADE,
+    user_email TEXT NOT NULL,
+    user_role TEXT NOT NULL,
+    action TEXT NOT NULL,
+    details JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 10. TABLE: ALERT_RULES (Automation Triggers & Multi-channel Dispatch)
+CREATE TABLE IF NOT EXISTS public.alert_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    farm_id UUID REFERENCES public.farms(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    rule_type TEXT NOT NULL CHECK (rule_type IN ('ndvi_drop', 'disease_critical', 'wind_speed', 'soil_moisture_sar', 'custom')),
+    threshold NUMERIC(10, 2) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    channels JSONB NOT NULL DEFAULT '{"webhook": false, "email": true, "sms": false}'::jsonb,
+    webhook_url TEXT,
+    recipient_email TEXT,
+    recipient_phone TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- INDEXES
+CREATE INDEX IF NOT EXISTS idx_team_members_farm ON public.team_members(farm_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_farm ON public.audit_logs(farm_id);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_farm ON public.alert_rules(farm_id);
+
+-- RLS POLICIES FOR NEW TABLES
+ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.alert_rules ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public read access for team_members" ON public.team_members FOR SELECT USING (true);
+CREATE POLICY "Manage team_members" ON public.team_members FOR ALL USING (true);
+
+CREATE POLICY "Public read access for audit_logs" ON public.audit_logs FOR SELECT USING (true);
+CREATE POLICY "Manage audit_logs" ON public.audit_logs FOR ALL USING (true);
+
+CREATE POLICY "Public read access for alert_rules" ON public.alert_rules FOR SELECT USING (true);
+CREATE POLICY "Manage alert_rules" ON public.alert_rules FOR ALL USING (true);
+
