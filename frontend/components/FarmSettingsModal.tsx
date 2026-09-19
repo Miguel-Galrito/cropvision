@@ -132,20 +132,30 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 select-none overflow-y-auto">
-      <div className="relative w-full max-w-xl rounded-3xl bg-[#0b101b] border border-slate-800 shadow-2xl p-6 text-slate-200 my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 select-none overflow-y-auto">
+      <div
+        className={`relative w-full max-w-xl rounded-3xl border shadow-2xl p-6 my-auto max-h-[90vh] overflow-y-auto transition-colors ${
+          isLight
+            ? 'bg-white border-slate-200 text-slate-800'
+            : 'bg-[#0b101b] border-slate-800 text-slate-200'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-              <Settings className="w-5 h-5" />
+            <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+              <Building2 className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-white font-mono">
-                {t.settingsTitle}
+                {isEn
+                  ? 'Entity Configuration & Technical Audit (White-Label)'
+                  : 'Configuração da Entidade & Auditoria (White-Label)'}
               </h3>
               <p className="text-xs text-slate-400">
-                {t.settingsSub}
+                {isEn
+                  ? 'Corporate fiscal ID, cadastral address, agronomist seal & logo for official PDF reports'
+                  : 'Dados fiscais da exploração, morada cadastral, cédula do agrónomo e logótipo para relatórios oficiais'}
               </p>
             </div>
           </div>

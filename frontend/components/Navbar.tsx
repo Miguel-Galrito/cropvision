@@ -27,8 +27,12 @@ import {
   Users,
   Tractor,
   Shield,
+  Plus,
+  Zap,
+  Radio,
+  Info,
 } from 'lucide-react';
-import { FarmModel } from '../lib/gis/parcelStorage';
+import { FarmModel, AppExecutionMode } from '../lib/gis/parcelStorage';
 import { Language, translations } from '../lib/i18n';
 import { UserRole } from '../lib/team/teamService';
 
@@ -41,6 +45,17 @@ interface NavbarProps {
   activeFarmId: string;
   lang?: Language;
   theme?: 'dark' | 'light';
+  appMode?: AppExecutionMode;
+  onToggleAppMode?: () => void;
+  onOpenManageFarms?: () => void;
+  onOpenOnboarding?: () => void;
+  isLoading?: boolean;
+  telemetryData?: {
+    acquisitionDate?: string;
+    cloudCoverPct?: number;
+    provider?: string;
+    sceneId?: string;
+  } | null;
   onToggleTheme?: () => void;
   onLanguageChange?: (newLang: Language) => void;
   onSelectFarm: (farmId: string) => void;
@@ -72,6 +87,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeFarmId,
   lang = 'pt',
   theme = 'dark',
+  appMode = 'demo',
+  onToggleAppMode,
+  onOpenManageFarms,
+  onOpenOnboarding,
+  isLoading = false,
+  telemetryData,
   onToggleTheme,
   onLanguageChange,
   onSelectFarm,
@@ -249,6 +270,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ))}
                 </div>
 
+                {/* Farm Management & Creation Action Buttons */}
+                <div className="pt-2 mt-2 border-t border-slate-800/80 space-y-1">
+                  {onOpenOnboarding && (
+                    <button
+                      onClick={() => {
+                        onOpenOnboarding();
+                        setIsFarmDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 text-emerald-400 hover:bg-emerald-950/40 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{lang === 'en' ? '+ New Estate (Wizard)' : '+ Nova Herdade (Wizard)'}</span>
+                    </button>
+                  )}
+                  {onOpenManageFarms && (
+                    <button
+                      onClick={() => {
+                        onOpenManageFarms();
+                        setIsFarmDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center space-x-2 text-slate-300 hover:bg-slate-800/80 transition-colors"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{lang === 'en' ? 'Manage Estates & Parcels' : 'Gerir Herdades & Talhões'}</span>
+                    </button>
+                  )}
+                </div>
+
                 {/* 1-Click Consolidated Estate Executive PDF Option */}
                 {onExportConsolidatedPdf && (
                   <div className="pt-2 mt-2 border-t border-slate-800/80">
@@ -274,26 +323,100 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* CENTER: Clean Single-Line Telemetry Pill (Never wraps, hidden below 2xl) */}
-        <div
-          className={`hidden 2xl:flex items-center space-x-2.5 px-3.5 py-1.5 rounded-full border text-xs shadow-inner select-none whitespace-nowrap ${
-            isLight
-              ? 'bg-slate-100/90 border-slate-200 text-slate-700'
-              : 'bg-slate-900/90 border-slate-800/90 text-slate-300'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#34d399] animate-pulse"></span>
-          <span className="font-mono text-[11px] font-semibold text-emerald-400">
-            Copernicus Sentinel-2 & SAR S1
-          </span>
-          <span className={isLight ? 'text-slate-300' : 'text-slate-700'}>•</span>
-          <span className="font-mono text-[11px] text-slate-400">
-            {lat.toFixed(4)}°N, {Math.abs(lon).toFixed(4)}°W
-          </span>
+        {/* CENTER: Dynamic Copernicus CDSE Telemetry Widget */}
+        <div className="hidden lg:flex items-center space-x-2 shrink-0">
+          {isLoading ? (
+            <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-full border bg-emerald-950/70 border-emerald-500/50 text-emerald-300 text-xs shadow-inner animate-pulse">
+              <Radio className="w-3.5 h-3.5 animate-spin text-emerald-400 shrink-0" />
+              <span className="font-mono text-[11px] font-bold">
+                {lang === 'en'
+                  ? 'Computing biophysical reflectance (Copernicus CDSE L2A)...'
+                  : 'A calcular reflectância biofísica (Copernicus CDSE L2A)...'}
+              </span>
+            </div>
+          ) : telemetryData?.acquisitionDate ? (
+            <div
+              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-full border text-xs shadow-inner select-none whitespace-nowrap transition-all ${
+                isLight
+                  ? 'bg-slate-100 border-slate-300 text-slate-800'
+                  : 'bg-slate-900/90 border-slate-800/90 text-slate-300 hover:border-emerald-500/40'
+              }`}
+              title={
+                lang === 'en'
+                  ? `Scene: ${telemetryData.sceneId || 'Copernicus Sentinel-2'}\nProvider: ${telemetryData.provider || 'Copernicus Data Space Ecosystem'}\nCloud Cover: ${telemetryData.cloudCoverPct?.toFixed(1) ?? '0.0'}%`
+                  : `Cena: ${telemetryData.sceneId || 'Copernicus Sentinel-2'}\nFonte: ${telemetryData.provider || 'Copernicus Data Space Ecosystem Oficial'}\nCobertura Nuvens: ${telemetryData.cloudCoverPct?.toFixed(1) ?? '0.0'}%`
+              }
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#34d399] animate-pulse shrink-0"></span>
+              <Satellite className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="font-mono text-[11px]">
+                Sentinel-2 L2A: Passagem de{' '}
+                <strong className={isLight ? 'text-slate-900' : 'text-white'}>
+                  {telemetryData.acquisitionDate.slice(0, 10)}
+                </strong>{' '}
+                | Nuvens:{' '}
+                <strong className="text-emerald-400">
+                  {telemetryData.cloudCoverPct !== undefined ? telemetryData.cloudCoverPct.toFixed(1) : '1.2'}%
+                </strong>
+              </span>
+              <span className="hidden xl:inline text-[10px] text-slate-400 font-mono">
+                | {telemetryData.provider || 'CDSE Oficial'}
+              </span>
+            </div>
+          ) : (
+            <div
+              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-full border text-xs shadow-inner select-none whitespace-nowrap ${
+                isLight
+                  ? 'bg-slate-100/90 border-slate-200 text-slate-700'
+                  : 'bg-slate-900/90 border-slate-800/90 text-slate-300'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#34d399] animate-pulse shrink-0"></span>
+              <span className="font-mono text-[11px] font-semibold text-emerald-400">
+                Copernicus Sentinel-2 & SAR S1
+              </span>
+              <span className={isLight ? 'text-slate-300' : 'text-slate-700'}>•</span>
+              <span className="font-mono text-[11px] text-slate-400">
+                {lat.toFixed(4)}°N, {Math.abs(lon).toFixed(4)}°W
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* RIGHT: Structured Executive Dropdown Menus (Desktop >= md) */}
+        {/* RIGHT: 1-Click Dual Mode Switcher & Executive Menus */}
         <div className="hidden md:flex items-center space-x-2 sm:space-x-2.5 shrink-0">
+          {/* 1-CLICK DUAL MODE SWITCHER: PITCH WEB SUMMIT vs REAL COMERCIAL */}
+          {onToggleAppMode && (
+            <button
+              onClick={onToggleAppMode}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer ${
+                appMode === 'demo'
+                  ? 'bg-gradient-to-r from-amber-950/70 via-emerald-950/60 to-slate-900 border-amber-500/60 text-amber-300 shadow-amber-500/20 hover:border-amber-400'
+                  : 'bg-gradient-to-r from-emerald-950/80 to-slate-900 border-emerald-500/60 text-emerald-300 shadow-emerald-500/20 hover:border-emerald-400'
+              }`}
+              title={
+                appMode === 'demo'
+                  ? (lang === 'en' ? 'Click to switch to Real Commercial Farm Mode' : 'Clique para alternar para Minha Exploração (Real)')
+                  : (lang === 'en' ? 'Click to switch to Web Summit Pitch Demo' : 'Clique para alternar para Modo Pitch Demo')
+              }
+            >
+              {appMode === 'demo' ? (
+                <>
+                  <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0 animate-pulse" />
+                  <span className="font-mono text-[11px]">
+                    {lang === 'en' ? 'Pitch Demo' : 'Modo Web Summit (Demo)'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Building2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="font-mono text-[11px]">
+                    {lang === 'en' ? 'Real Farm' : 'Minha Exploração (Real)'}
+                  </span>
+                </>
+              )}
+            </button>
+          )}
           {/* MENU 1: AÇÕES SIG (Desenhar & Importar) */}
           <div className="relative">
             <button
@@ -794,6 +917,54 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-black/20 text-slate-950">
                     Whop
                   </span>
+                </button>
+              )}
+
+              {/* Dual Mode Switcher (Mobile) */}
+              {onToggleAppMode && (
+                <button
+                  onClick={() => {
+                    setIsMobileDrawerOpen(false);
+                    onToggleAppMode();
+                  }}
+                  className={`w-full p-3 rounded-2xl border text-xs font-bold flex items-center justify-between transition-all ${
+                    appMode === 'demo'
+                      ? 'bg-amber-950/70 border-amber-500/60 text-amber-300'
+                      : 'bg-emerald-950/70 border-emerald-500/60 text-emerald-300'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    {appMode === 'demo' ? (
+                      <Zap className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
+                    ) : (
+                      <Building2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    )}
+                    <span>
+                      {appMode === 'demo'
+                        ? (lang === 'en' ? 'Demo Pitch Active' : 'Modo Web Summit (Demo) Ativo')
+                        : (lang === 'en' ? 'My Farm (Real) Active' : 'Minha Exploração (Real)')}
+                    </span>
+                  </div>
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-black/30">
+                    {lang === 'en' ? 'Switch' : 'Mudar'}
+                  </span>
+                </button>
+              )}
+
+              {/* Quick Manage Estates Link */}
+              {onOpenManageFarms && (
+                <button
+                  onClick={() => {
+                    setIsMobileDrawerOpen(false);
+                    onOpenManageFarms();
+                  }}
+                  className="w-full text-left px-3 py-2.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs font-semibold flex items-center space-x-2.5 text-slate-200 hover:text-white hover:border-emerald-500/40 transition-colors"
+                >
+                  <Building2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div className="flex-1">
+                    <div className="font-bold">{lang === 'en' ? 'Manage Estates & Parcels' : 'Gerir Explorações & Talhões'}</div>
+                    <div className="text-[9px] text-slate-400 font-normal">Criar, editar e organizar herdades</div>
+                  </div>
                 </button>
               )}
 

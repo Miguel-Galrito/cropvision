@@ -33,8 +33,21 @@ import {
   setActiveFarmId,
   FarmModel,
   ParcelModel,
+  AppExecutionMode,
+  getAppMode,
+  setAppMode,
+  loadFarmsByMode,
+  saveFarmsByMode,
 } from '../lib/gis/parcelStorage';
-import { syncParcelToSupabase, syncFarmToSupabase } from '../lib/supabaseService';
+import {
+  syncParcelToSupabase,
+  syncFarmToSupabase,
+  loadUserFarmsFromSupabase,
+  deleteFarmFromSupabase,
+  deleteParcelFromSupabase,
+} from '../lib/supabaseService';
+import { OnboardingWizardModal, OnboardingCompletePayload } from '../components/OnboardingWizardModal';
+import { ManageFarmsModal } from '../components/ManageFarmsModal';
 import {
   loadScoutingRecords,
   saveScoutingRecord,
@@ -51,7 +64,7 @@ import { fetchAgroClimate } from '../lib/weather/openMeteo';
 import { generateAgronomicPdfReport } from '../lib/report/pdfReport';
 import { generateConsolidatedFarmPdf } from '../lib/report/consolidatedFarmPdf';
 import { Language, translations } from '../lib/i18n';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export default function DashboardPage() {
   // 1. Language & Localization State
@@ -105,68 +118,12 @@ export default function DashboardPage() {
     });
   };
 
-  // 3. Commercial Quota & Web Summit Pitch Mode State
+  // 3. Execution Mode: Web Summit Pitch (Demo) vs Minha Exploração (Real)
+  const [appMode, setAppModeState] = useState<AppExecutionMode>('demo');
   const [isWebSummitMode, setIsWebSummitMode] = useState<boolean>(true);
   const [dailyUsage, setDailyUsage] = useState<number>(0);
 
   const getTodayQuotaKey = () => `cropvision_usage_${new Date().toISOString().slice(0, 10)}`;
-
-  useEffect(() => {
-    try {
-      const savedMode = localStorage.getItem('cropvision_mode');
-      if (savedMode === 'standard') {
-        setIsWebSummitMode(false);
-      } else {
-        setIsWebSummitMode(true);
-      }
-
-      const todayKey = getTodayQuotaKey();
-      const count = parseInt(localStorage.getItem(todayKey) || '0', 10);
-      setDailyUsage(isNaN(count) ? 0 : count);
-    } catch {
-      // Ignore storage errors
-    }
-  }, []);
-
-  const handleToggleWebSummitMode = () => {
-    setIsWebSummitMode((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('cropvision_mode', next ? 'websummit' : 'standard');
-      } catch {
-        // Ignore
-      }
-      return next;
-    });
-  };
-
-  /**
-   * Checks whether the user is allowed to perform an analysis.
-   * In Web Summit Mode: Unlimited (always returns true).
-   * In Standard Mode: Max 3 daily analyses. If exceeded (>=3), triggers Pricing Modal & Whop redirect.
-   */
-  const checkAndIncrementQuota = (): boolean => {
-    if (isWebSummitMode) {
-      return true;
-    }
-
-    try {
-      const todayKey = getTodayQuotaKey();
-      const current = parseInt(localStorage.getItem(todayKey) || '0', 10) || 0;
-      if (current >= 3) {
-        setPricingReason('limit_reached');
-        setIsPricingOpen(true);
-        return false;
-      }
-
-      const next = current + 1;
-      localStorage.setItem(todayKey, next.toString());
-      setDailyUsage(next);
-      return true;
-    } catch {
-      return true;
-    }
-  };
 
   // 4. Farms & Active Parcel State
   const [farms, setFarms] = useState<FarmModel[]>([]);
@@ -207,6 +164,8 @@ export default function DashboardPage() {
   const [analysisTab, setAnalysisTab] = useState<'optical' | 'sar' | 'prescription' | 'irrigation' | 'climate' | 'health'>('optical');
 
   // 9. Modals & Gating State
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(false);
+  const [isManageFarmsOpen, setIsManageFarmsOpen] = useState<boolean>(false);
   const [isParcelUploaderOpen, setIsParcelUploaderOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
@@ -222,6 +181,34 @@ export default function DashboardPage() {
   const [isMachineryGuideOpen, setIsMachineryGuideOpen] = useState<boolean>(false);
   const [userRole, setUserRole] = useState<UserRole>('agronomist');
   const [auditToastMessage, setAuditToastMessage] = useState<string | null>(null);
+
+  /**
+   * Checks whether the user is allowed to perform an analysis.
+   * In Web Summit Mode / Demo: Unlimited (always returns true).
+   * In Standard Mode: Max 3 daily analyses. If exceeded (>=3), triggers Pricing Modal.
+   */
+  const checkAndIncrementQuota = (): boolean => {
+    if (isWebSummitMode || appMode === 'demo') {
+      return true;
+    }
+
+    try {
+      const todayKey = getTodayQuotaKey();
+      const current = parseInt(localStorage.getItem(todayKey) || '0', 10) || 0;
+      if (current >= 3) {
+        setPricingReason('limit_reached');
+        setIsPricingOpen(true);
+        return false;
+      }
+
+      const next = current + 1;
+      localStorage.setItem(todayKey, next.toString());
+      setDailyUsage(next);
+      return true;
+    } catch {
+      return true;
+    }
+  };
 
   const handleShareAudit = useCallback(() => {
     try {
@@ -243,25 +230,65 @@ export default function DashboardPage() {
     }
   }, [activeParcel, lang]);
 
-  // Load Initial Farms and Scouting Records
+  // Load Initial Farms and Execution Mode on Mount
   useEffect(() => {
-    const loadedFarms = loadFarms();
+    const currentMode = getAppMode();
+    setAppModeState(currentMode);
+
+    if (currentMode === 'demo') {
+      setIsWebSummitMode(true);
+    } else {
+      const savedMode = localStorage.getItem('cropvision_mode');
+      setIsWebSummitMode(savedMode !== 'standard');
+    }
+
+    const todayKey = getTodayQuotaKey();
+    const count = parseInt(localStorage.getItem(todayKey) || '0', 10);
+    setDailyUsage(isNaN(count) ? 0 : count);
+
+    const loadedFarms = loadFarmsByMode(currentMode);
     setFarms(loadedFarms);
 
-    const activeFId = getActiveFarmId();
-    setActiveFarmIdState(activeFId);
-
-    const initialFarm = loadedFarms.find((f) => f.id === activeFId) || loadedFarms[0];
-    if (initialFarm && initialFarm.parcels.length > 0) {
-      const initialP = initialFarm.parcels[0];
-      setActiveParcel(initialP);
-      setLat(initialP.center[0]);
-      setLon(initialP.center[1]);
-      setCurrentPolygon(initialP.polygon);
-      setCropType(initialP.cropType);
-      setTrainingSystem(initialP.trainingSystem);
-      setIrrigationType(initialP.irrigationType);
-      setLocationName(`${initialFarm.name} - ${initialP.name}`);
+    if (currentMode === 'real' && loadedFarms.length === 0) {
+      // Trigger Onboarding Wizard immediately for empty real mode
+      setIsOnboardingOpen(true);
+      // Attempt loading real farms from Supabase in background
+      loadUserFarmsFromSupabase().then((sbFarms) => {
+        if (sbFarms && sbFarms.length > 0) {
+          setFarms(sbFarms);
+          saveFarmsByMode(sbFarms, 'real');
+          setIsOnboardingOpen(false);
+          const f = sbFarms[0];
+          const p = f.parcels[0];
+          if (p) {
+            setActiveFarmIdState(f.id);
+            setActiveParcel(p);
+            setLat(p.center[0]);
+            setLon(p.center[1]);
+            setCurrentPolygon(p.polygon);
+            setCropType(p.cropType);
+            setTrainingSystem(p.trainingSystem);
+            setIrrigationType(p.irrigationType);
+            setLocationName(`${f.name} - ${p.name}`);
+            runAnalysis(p.center[0], p.center[1], p.areaHectares, true);
+          }
+        }
+      });
+    } else {
+      const activeFId = getActiveFarmId();
+      const initialFarm = loadedFarms.find((f) => f.id === activeFId) || loadedFarms[0];
+      if (initialFarm && initialFarm.parcels.length > 0) {
+        const initialP = initialFarm.parcels[0];
+        setActiveFarmIdState(initialFarm.id);
+        setActiveParcel(initialP);
+        setLat(initialP.center[0]);
+        setLon(initialP.center[1]);
+        setCurrentPolygon(initialP.polygon);
+        setCropType(initialP.cropType);
+        setTrainingSystem(initialP.trainingSystem);
+        setIrrigationType(initialP.irrigationType);
+        setLocationName(`${initialFarm.name} - ${initialP.name}`);
+      }
     }
 
     setScoutingRecords(loadScoutingRecords());
@@ -273,6 +300,7 @@ export default function DashboardPage() {
       .then((res) => setApiHealthy(res.status === 'healthy'))
       .catch(() => setApiHealthy(false));
   }, []);
+
 
   // Analysis Runner
   const runAnalysis = useCallback(
@@ -327,6 +355,232 @@ export default function DashboardPage() {
   useEffect(() => {
     runAnalysis(lat, lon, activeParcel?.areaHectares || 28.5, true);
   }, []);
+
+  // Toggle Execution Mode: Demo (Web Summit Pitch) vs Real (Minha Exploração)
+  const handleToggleAppMode = (targetMode?: AppExecutionMode) => {
+    const nextMode: AppExecutionMode = targetMode || (appMode === 'demo' ? 'real' : 'demo');
+    setAppModeState(nextMode);
+    setAppMode(nextMode);
+
+    if (nextMode === 'demo') {
+      setIsWebSummitMode(true);
+      const demoFarms = loadFarmsByMode('demo');
+      setFarms(demoFarms);
+      const firstFarm = demoFarms[0];
+      if (firstFarm && firstFarm.parcels.length > 0) {
+        const p = firstFarm.parcels[0];
+        setActiveFarmIdState(firstFarm.id);
+        setActiveParcel(p);
+        setLat(p.center[0]);
+        setLon(p.center[1]);
+        setCurrentPolygon(p.polygon);
+        setCropType(p.cropType);
+        setTrainingSystem(p.trainingSystem);
+        setIrrigationType(p.irrigationType);
+        setLocationName(`${firstFarm.name} - ${p.name}`);
+        runAnalysis(p.center[0], p.center[1], p.areaHectares, true);
+      }
+    } else {
+      // Real commercial mode
+      setIsWebSummitMode(false);
+      let realFarms = loadFarmsByMode('real');
+      if (realFarms.length === 0) {
+        loadUserFarmsFromSupabase().then((sbFarms) => {
+          if (sbFarms && sbFarms.length > 0) {
+            setFarms(sbFarms);
+            saveFarmsByMode(sbFarms, 'real');
+            const f = sbFarms[0];
+            const p = f.parcels[0];
+            if (p) {
+              setActiveFarmIdState(f.id);
+              setActiveParcel(p);
+              setLat(p.center[0]);
+              setLon(p.center[1]);
+              setCurrentPolygon(p.polygon);
+              setCropType(p.cropType);
+              setTrainingSystem(p.trainingSystem);
+              setIrrigationType(p.irrigationType);
+              setLocationName(`${f.name} - ${p.name}`);
+              runAnalysis(p.center[0], p.center[1], p.areaHectares, true);
+            }
+          } else {
+            setFarms([]);
+            setActiveParcel(null);
+            setCurrentPolygon(null);
+            setIsOnboardingOpen(true);
+          }
+        });
+      } else {
+        setFarms(realFarms);
+        const f = realFarms[0];
+        if (f && f.parcels.length > 0) {
+          const p = f.parcels[0];
+          setActiveFarmIdState(f.id);
+          setActiveParcel(p);
+          setLat(p.center[0]);
+          setLon(p.center[1]);
+          setCurrentPolygon(p.polygon);
+          setCropType(p.cropType);
+          setTrainingSystem(p.trainingSystem);
+          setIrrigationType(p.irrigationType);
+          setLocationName(`${f.name} - ${p.name}`);
+          runAnalysis(p.center[0], p.center[1], p.areaHectares, true);
+        }
+      }
+    }
+  };
+
+  const handleToggleWebSummitMode = () => {
+    handleToggleAppMode();
+  };
+
+  // Complete Onboarding Wizard Callback
+  const handleCompleteOnboarding = (payload: OnboardingCompletePayload) => {
+    const newFarmId = `farm-real-${Date.now()}`;
+    const newParcelId = `parcel-real-${Date.now()}`;
+
+    const delta = 0.0035;
+    const polygon: [number, number][] = [
+      [payload.center[0] + delta, payload.center[1] - delta],
+      [payload.center[0] + delta, payload.center[1] + delta],
+      [payload.center[0] - delta, payload.center[1] + delta],
+      [payload.center[0] - delta, payload.center[1] - delta],
+      [payload.center[0] + delta, payload.center[1] - delta],
+    ];
+
+    const newParcel: ParcelModel = {
+      id: newParcelId,
+      name: payload.parcelName,
+      farmId: newFarmId,
+      cropType: payload.cropType,
+      trainingSystem: payload.trainingSystem,
+      irrigationType: payload.irrigationType,
+      areaHectares: payload.areaHectares,
+      center: payload.center,
+      polygon,
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+
+    const newFarm: FarmModel = {
+      id: newFarmId,
+      name: payload.farmName,
+      locationLabel: payload.locationLabel,
+      center: payload.center,
+      parcels: [newParcel],
+      companyName: payload.farmName,
+      agronomistName,
+      agronomistLicense: licenseNumber,
+    };
+
+    const updated = [newFarm, ...farms];
+    setFarms(updated);
+    saveFarmsByMode(updated, appMode);
+    setActiveFarmIdState(newFarmId);
+    setActiveParcel(newParcel);
+    setLat(payload.center[0]);
+    setLon(payload.center[1]);
+    setZoom(15);
+    setCurrentPolygon(payload.actionType === 'draw' ? null : polygon);
+    setCropType(payload.cropType);
+    setTrainingSystem(payload.trainingSystem);
+    setIrrigationType(payload.irrigationType);
+    setLocationName(`${payload.farmName} - ${payload.parcelName}`);
+    setIsOnboardingOpen(false);
+
+    if (appMode === 'real') {
+      syncFarmToSupabase(newFarm).catch(() => {});
+      if (payload.actionType !== 'draw') {
+        syncParcelToSupabase(newParcel, newFarmId).catch(() => {});
+      }
+    }
+
+    if (payload.actionType === 'draw') {
+      setIsDrawingModeActive(true);
+    } else if (payload.actionType === 'import') {
+      setIsParcelUploaderOpen(true);
+    } else {
+      runAnalysis(payload.center[0], payload.center[1], payload.areaHectares, true);
+    }
+  };
+
+  // Farm Management Handlers (CRUD)
+  const handleCreateFarm = (farmData: { name: string; locationLabel: string; center: [number, number] }) => {
+    const newFarm: FarmModel = {
+      id: `farm-${appMode}-${Date.now()}`,
+      name: farmData.name,
+      locationLabel: farmData.locationLabel,
+      center: farmData.center,
+      parcels: [],
+      companyName: farmData.name,
+      agronomistName,
+      agronomistLicense: licenseNumber,
+    };
+    const updated = [newFarm, ...farms];
+    setFarms(updated);
+    saveFarmsByMode(updated, appMode);
+    setActiveFarmIdState(newFarm.id);
+    if (appMode === 'real') {
+      syncFarmToSupabase(newFarm).catch(() => {});
+    }
+  };
+
+  const handleUpdateFarm = (farmId: string, updates: Partial<FarmModel>) => {
+    const updated = farms.map((f) => (f.id === farmId ? { ...f, ...updates } : f));
+    setFarms(updated);
+    saveFarmsByMode(updated, appMode);
+    if (appMode === 'real') {
+      const target = updated.find((f) => f.id === farmId);
+      if (target) syncFarmToSupabase(target).catch(() => {});
+    }
+  };
+
+  const handleDeleteFarm = (farmId: string) => {
+    const updated = farms.filter((f) => f.id !== farmId);
+    setFarms(updated);
+    saveFarmsByMode(updated, appMode);
+    if (appMode === 'real') {
+      deleteFarmFromSupabase(farmId).catch(() => {});
+    }
+    if (activeFarmId === farmId) {
+      if (updated.length > 0) {
+        handleSelectFarm(updated[0].id);
+      } else {
+        setActiveParcel(null);
+        setCurrentPolygon(null);
+        if (appMode === 'real') {
+          setIsOnboardingOpen(true);
+        }
+      }
+    }
+  };
+
+  const handleDeleteParcel = (farmId: string, parcelId: string) => {
+    const updated = farms.map((f) => {
+      if (f.id === farmId) {
+        return { ...f, parcels: f.parcels.filter((p) => p.id !== parcelId) };
+      }
+      return f;
+    });
+    setFarms(updated);
+    saveFarmsByMode(updated, appMode);
+    if (appMode === 'real') {
+      deleteParcelFromSupabase(parcelId).catch(() => {});
+    }
+    if (activeParcel?.id === parcelId) {
+      const farm = updated.find((f) => f.id === farmId);
+      if (farm && farm.parcels.length > 0) {
+        const nextP = farm.parcels[0];
+        setActiveParcel(nextP);
+        setLat(nextP.center[0]);
+        setLon(nextP.center[1]);
+        setCurrentPolygon(nextP.polygon);
+        runAnalysis(nextP.center[0], nextP.center[1], nextP.areaHectares);
+      } else {
+        setActiveParcel(null);
+        setCurrentPolygon(null);
+      }
+    }
+  };
 
   // Farm Selector Handler
   const handleSelectFarm = (farmId: string) => {
@@ -426,9 +680,11 @@ export default function DashboardPage() {
     });
 
     setFarms(updatedFarms);
-    saveFarms(updatedFarms);
-    // Transparently persist to Supabase if configured
-    syncParcelToSupabase(newParcel, activeFarmId).catch(() => {});
+    saveFarmsByMode(updatedFarms, appMode);
+    // Transparently persist to Supabase if configured and in real mode
+    if (appMode === 'real') {
+      syncParcelToSupabase(newParcel, activeFarmId).catch(() => {});
+    }
     setActiveParcel(newParcel);
 
     setCurrentPolygon(polygon);
@@ -501,12 +757,14 @@ export default function DashboardPage() {
     });
 
     setFarms(updatedFarms);
-    saveFarms(updatedFarms);
+    saveFarmsByMode(updatedFarms, appMode);
 
-    // Sync updated farm metadata to Supabase
-    const activeFarmObj = updatedFarms.find((f) => f.id === activeFarmId);
-    if (activeFarmObj) {
-      syncFarmToSupabase(activeFarmObj).catch(() => {});
+    // Sync updated farm metadata to Supabase if in real mode
+    if (appMode === 'real') {
+      const activeFarmObj = updatedFarms.find((f) => f.id === activeFarmId);
+      if (activeFarmObj) {
+        syncFarmToSupabase(activeFarmObj).catch(() => {});
+      }
     }
   };
 
@@ -600,6 +858,17 @@ export default function DashboardPage() {
         activeFarmId={activeFarmId}
         lang={lang}
         theme={theme}
+        appMode={appMode}
+        onToggleAppMode={() => handleToggleAppMode()}
+        onOpenManageFarms={() => setIsManageFarmsOpen(true)}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
+        isLoading={isLoading}
+        telemetryData={{
+          acquisitionDate: analysisData?.acquisition_date,
+          cloudCoverPct: analysisData?.cloud_cover_percentage,
+          provider: 'Copernicus CDSE Oficial (ESA)',
+          sceneId: analysisData?.scene_id,
+        }}
         onToggleTheme={handleToggleTheme}
         onLanguageChange={handleLanguageChange}
         onSelectFarm={handleSelectFarm}
@@ -625,8 +894,32 @@ export default function DashboardPage() {
         activeAnomaliesCount={3}
       />
 
+      {/* PITCH WEB SUMMIT DEMO TOP BANNER */}
+      {appMode === 'demo' && (
+        <div className="fixed top-16 left-0 right-0 z-30 bg-gradient-to-r from-amber-600/95 via-emerald-700/95 to-slate-900/95 backdrop-blur-md text-white text-xs px-3 sm:px-6 py-1.5 flex items-center justify-between shadow-lg border-b border-amber-500/30 select-none animate-in fade-in duration-200">
+          <div className="flex items-center space-x-2 truncate">
+            <span className="flex h-2 w-2 relative shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-80"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
+            </span>
+            <span className="font-bold tracking-wide truncate">
+              {lang === 'en'
+                ? '🚀 Web Summit Pitch Mode Active — Pre-loaded simulation data for instant demonstration'
+                : '🚀 Ambiente de Demonstração Ativo — Dados de simulação pré-carregados para pitch da Web Summit'}
+            </span>
+          </div>
+          <button
+            onClick={() => handleToggleAppMode('real')}
+            className="ml-3 px-3 py-1 rounded-xl bg-slate-950/80 hover:bg-black text-amber-300 hover:text-white font-mono text-[11px] font-bold transition-all shrink-0 flex items-center gap-1.5 border border-amber-500/40 shadow-sm cursor-pointer"
+          >
+            <span>{lang === 'en' ? 'Switch to Real Farm' : 'Mudar para Minha Exploração (Real)'}</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+
       {/* 2. MAIN FULL-SCREEN LEAFLET MAP */}
-      <main className="absolute inset-0 top-16 z-0">
+      <main className={`absolute inset-0 ${appMode === 'demo' ? 'top-[5.5rem]' : 'top-16'} z-0`}>
         <MapWrapper
           lat={lat}
           lon={lon}
@@ -693,6 +986,7 @@ export default function DashboardPage() {
             setIsPricingOpen(true);
           }}
           onExportPdf={handleExportPdf}
+          onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenComparator={() => setIsComparatorOpen(true)}
           onOpenRoi={() => setIsRoiModalOpen(true)}
           onOpenMachineryGuide={() => setIsMachineryGuideOpen(true)}
@@ -721,6 +1015,42 @@ export default function DashboardPage() {
       )}
 
       {/* 6. MODALS */}
+      {/* Onboarding Wizard Modal */}
+      <OnboardingWizardModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onComplete={handleCompleteOnboarding}
+        lang={lang}
+        theme={theme}
+      />
+
+      {/* Complete Estates & Parcels Management Modal (CRUD) */}
+      <ManageFarmsModal
+        isOpen={isManageFarmsOpen}
+        onClose={() => setIsManageFarmsOpen(false)}
+        farms={farms}
+        activeFarmId={activeFarmId}
+        onSelectFarm={handleSelectFarm}
+        onCreateFarm={handleCreateFarm}
+        onUpdateFarm={handleUpdateFarm}
+        onDeleteFarm={handleDeleteFarm}
+        onDeleteParcel={handleDeleteParcel}
+        onFocusParcel={(parcel) => {
+          setActiveParcel(parcel);
+          setLat(parcel.center[0]);
+          setLon(parcel.center[1]);
+          setCurrentPolygon(parcel.polygon);
+          setCropType(parcel.cropType);
+          setTrainingSystem(parcel.trainingSystem);
+          setIrrigationType(parcel.irrigationType);
+          setLocationName(`${farms.find((f) => f.id === parcel.farmId)?.name || 'Herdade'} - ${parcel.name}`);
+          runAnalysis(parcel.center[0], parcel.center[1], parcel.areaHectares);
+        }}
+        lang={lang}
+        theme={theme}
+        appMode={appMode}
+      />
+
       {/* Parcel Uploader (Shapefile .zip, GeoJSON, KML + Interactive Draw) */}
       <ParcelUploader
         isOpen={isParcelUploaderOpen}

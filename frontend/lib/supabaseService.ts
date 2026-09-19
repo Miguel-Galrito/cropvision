@@ -168,3 +168,84 @@ export async function fetchAuditParcel(parcelId: string): Promise<any | null> {
     return null;
   }
 }
+
+/**
+ * Loads all farms and parcels belonging to the current user with RLS isolation.
+ */
+export async function loadUserFarmsFromSupabase(): Promise<FarmModel[] | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData?.user;
+
+    let query = supabase.from('farms').select('*, parcels(*)');
+    if (user?.id) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return null;
+
+    return data.map((f: any) => {
+      const parcels: ParcelModel[] = (f.parcels || []).map((row: any) => {
+        const coords = row.geojson?.geometry?.coordinates?.[0] || [];
+        const polygon: [number, number][] = coords.map(([lon, lat]: [number, number]) => [lat, lon]);
+        return {
+          id: row.id,
+          name: row.name,
+          farmId: f.id,
+          cropType: row.crop_type || 'olival',
+          trainingSystem: row.training_system || 'intensivo',
+          irrigationType: row.irrigation_type || 'gota-a-gota',
+          areaHectares: parseFloat(row.area_ha) || 10,
+          center: polygon[0] || [38.3842, -7.5519],
+          polygon,
+          createdAt: row.created_at || new Date().toISOString(),
+        };
+      });
+
+      return {
+        id: f.id,
+        name: f.name,
+        locationLabel: f.location || 'Portugal',
+        center: parcels[0]?.center || [38.3842, -7.5519],
+        parcels,
+        companyName: f.name,
+        taxId: f.nif,
+        cadastralAddress: f.location,
+        agronomistName: f.agronomist_name,
+        agronomistLicense: f.agronomist_license,
+        customLogoUrl: f.logo_url,
+      };
+    });
+  } catch (err) {
+    console.warn('Supabase loadUserFarms error:', err);
+    return null;
+  }
+}
+
+/**
+ * Deletes a farm and its associated parcels from Supabase.
+ */
+export async function deleteFarmFromSupabase(farmId: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return true;
+  try {
+    const { error } = await supabase.from('farms').delete().eq('id', farmId);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Deletes a specific parcel from Supabase.
+ */
+export async function deleteParcelFromSupabase(parcelId: string): Promise<boolean> {
+  if (!isSupabaseConfigured()) return true;
+  try {
+    const { error } = await supabase.from('parcels').delete().eq('id', parcelId);
+    return !error;
+  } catch {
+    return false;
+  }
+}

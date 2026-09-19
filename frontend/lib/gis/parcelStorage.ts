@@ -33,9 +33,36 @@ export interface FarmModel {
   customLogoUrl?: string;
 }
 
+export type AppExecutionMode = 'demo' | 'real';
+
 const FARMS_STORAGE_KEY = 'cropvision_user_farms_v2';
+const DEMO_FARMS_STORAGE_KEY = 'cropvision_demo_farms_v2';
+const REAL_FARMS_STORAGE_KEY = 'cropvision_real_farms_v2';
 const ACTIVE_FARM_KEY = 'cropvision_active_farm_id_v2';
 const ACTIVE_PARCEL_KEY = 'cropvision_active_parcel_id_v2';
+const APP_MODE_KEY = 'cropvision_app_mode';
+
+/**
+ * Returns current execution mode. Defaults to 'demo' (Herdade do Esporão) on first load.
+ */
+export function getAppMode(): AppExecutionMode {
+  if (typeof window === 'undefined') return 'demo';
+  try {
+    const saved = localStorage.getItem(APP_MODE_KEY);
+    return saved === 'real' ? 'real' : 'demo';
+  } catch {
+    return 'demo';
+  }
+}
+
+export function setAppMode(mode: AppExecutionMode): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(APP_MODE_KEY, mode);
+  } catch {
+    // Ignore storage quota
+  }
+}
 
 export function getInitialFarms(): FarmModel[] {
   return [
@@ -143,24 +170,45 @@ export function getInitialFarms(): FarmModel[] {
   ];
 }
 
-export function loadFarms(): FarmModel[] {
-  if (typeof window === 'undefined') return getInitialFarms();
+export function loadFarmsByMode(mode: AppExecutionMode): FarmModel[] {
+  if (typeof window === 'undefined') {
+    return mode === 'demo' ? getInitialFarms() : [];
+  }
+  const storageKey = mode === 'demo' ? DEMO_FARMS_STORAGE_KEY : REAL_FARMS_STORAGE_KEY;
   try {
-    const raw = localStorage.getItem(FARMS_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) {
-      const initial = getInitialFarms();
-      localStorage.setItem(FARMS_STORAGE_KEY, JSON.stringify(initial));
-      return initial;
+      if (mode === 'demo') {
+        const initial = getInitialFarms();
+        localStorage.setItem(storageKey, JSON.stringify(initial));
+        return initial;
+      }
+      return [];
     }
     return JSON.parse(raw);
   } catch {
-    return getInitialFarms();
+    return mode === 'demo' ? getInitialFarms() : [];
   }
 }
 
-export function saveFarms(farms: FarmModel[]): void {
+export function saveFarmsByMode(farms: FarmModel[], mode: AppExecutionMode): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(FARMS_STORAGE_KEY, JSON.stringify(farms));
+  const storageKey = mode === 'demo' ? DEMO_FARMS_STORAGE_KEY : REAL_FARMS_STORAGE_KEY;
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(farms));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function loadFarms(): FarmModel[] {
+  const mode = getAppMode();
+  return loadFarmsByMode(mode);
+}
+
+export function saveFarms(farms: FarmModel[]): void {
+  const mode = getAppMode();
+  saveFarmsByMode(farms, mode);
 }
 
 export function getActiveFarmId(): string {

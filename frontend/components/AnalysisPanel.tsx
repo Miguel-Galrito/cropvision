@@ -10,6 +10,7 @@ import {
 import {
   Download,
   FileText,
+  Settings,
   X,
   ChevronDown,
   ChevronUp,
@@ -70,6 +71,7 @@ interface AnalysisPanelProps {
   isProSimulated?: boolean;
   onRequirePro?: (reason: string) => void;
   onExportPdf?: () => void;
+  onOpenSettings?: () => void;
   onOpenScoutingAtCoord?: (lat: number, lon: number) => void;
   onLogTreatmentToFieldBook?: (disease: DiseaseRiskAssessment) => void;
   onShareAudit?: () => void;
@@ -100,6 +102,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   onTabChange,
   onRequirePro,
   onExportPdf,
+  onOpenSettings,
   onOpenScoutingAtCoord,
   onLogTreatmentToFieldBook,
   onShareAudit,
@@ -572,6 +575,21 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             >
               <FileText className="w-3.5 h-3.5 text-emerald-400" />
               <span>PDF</span>
+            </button>
+          )}
+
+          {/* Configure Entity / PDF White-Label */}
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors"
+              title={
+                lang === 'en'
+                  ? 'Configure White-Labeling & Entity Details (NIF, Logo, Agronomist Stamp)'
+                  : 'Configurar Entidade & Auditoria (NIF, Logótipo, Cédula Agrónomo)'
+              }
+            >
+              <Settings className="w-3.5 h-3.5" />
             </button>
           )}
 
