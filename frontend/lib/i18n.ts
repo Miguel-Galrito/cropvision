@@ -8,7 +8,7 @@ export type Language = 'pt' | 'en';
 export const translations = {
   pt: {
     // Brand & Header
-    brandSub: 'DEEP-TECH SAR',
+    brandSub: 'Agricultura de Precisão',
     feedLive: 'FEED ATIVO: SENTINEL-2 & S1',
     systemNominal: 'Satélite S2: Nominal | S1 SAR: Ativo',
     activeEstates: 'Explorações Cadastradas',
@@ -241,7 +241,7 @@ export const translations = {
 
   en: {
     // Brand & Header
-    brandSub: 'DEEP-TECH SAR',
+    brandSub: 'Precision Agriculture',
     feedLive: 'ACTIVE FEED: SENTINEL-2 & S1',
     systemNominal: 'Sentinel-2: Nominal | S1 SAR: Active',
     activeEstates: 'Registered Farms & Estates',

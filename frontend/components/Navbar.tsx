@@ -190,15 +190,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 CROP<span className="text-emerald-500">VISION</span>
               </span>
-              <span
-                className={`hidden md:inline-block text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase border ${
-                  isLight
-                    ? 'bg-emerald-100 border-emerald-400 text-emerald-800'
-                    : 'bg-emerald-950/90 border-emerald-500/40 text-emerald-300'
-                }`}
-              >
-                {t.brandSub}
-              </span>
             </div>
             <div className="text-[10px] text-emerald-500 font-mono tracking-wider flex items-center space-x-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
@@ -324,14 +315,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* CENTER: Dynamic Copernicus CDSE Telemetry Widget */}
-        <div className="hidden lg:flex items-center space-x-2 shrink-0">
+        <div className="hidden 2xl:flex items-center space-x-2 min-w-0 overflow-hidden">
           {isLoading ? (
             <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-full border bg-emerald-950/70 border-emerald-500/50 text-emerald-300 text-xs shadow-inner animate-pulse">
               <Radio className="w-3.5 h-3.5 animate-spin text-emerald-400 shrink-0" />
               <span className="font-mono text-[11px] font-bold">
                 {lang === 'en'
-                  ? 'Computing biophysical reflectance (Copernicus CDSE L2A)...'
-                  : 'A calcular reflectância biofísica (Copernicus CDSE L2A)...'}
+                  ? 'Processing Sentinel-2…'
+                  : 'A processar Sentinel-2…'}
               </span>
             </div>
           ) : telemetryData?.acquisitionDate ? (
@@ -350,17 +341,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#34d399] animate-pulse shrink-0"></span>
               <Satellite className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span className="font-mono text-[11px]">
-                Sentinel-2 L2A: Passagem de{' '}
+                Sentinel-2 ·{' '}
                 <strong className={isLight ? 'text-slate-900' : 'text-white'}>
                   {telemetryData.acquisitionDate.slice(0, 10)}
                 </strong>{' '}
-                | Nuvens:{' '}
+                · {lang === 'en' ? 'clouds' : 'nuvens'}{' '}
                 <strong className="text-emerald-400">
                   {telemetryData.cloudCoverPct !== undefined ? telemetryData.cloudCoverPct.toFixed(1) : '1.2'}%
                 </strong>
-              </span>
-              <span className="hidden xl:inline text-[10px] text-slate-400 font-mono">
-                | {telemetryData.provider || 'CDSE Oficial'}
               </span>
             </div>
           ) : (
