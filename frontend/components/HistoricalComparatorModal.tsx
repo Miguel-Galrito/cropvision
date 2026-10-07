@@ -37,7 +37,7 @@ export const HistoricalComparatorModal: React.FC<HistoricalComparatorModalProps>
   isOpen,
   onClose,
   parcelName = 'Talhão 1',
-  farmName = 'Herdade do Esporão',
+  farmName = 'Herdade Modelo',
   currentNdvi = 0.74,
   currentNdwi = 0.18,
   timeseries = null,

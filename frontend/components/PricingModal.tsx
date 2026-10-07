@@ -76,8 +76,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({
               }`}
             >
               {isWebSummitMode
-                ? (lang === 'en' ? '✓ Web Summit Unlimited Active' : '✓ Modo Web Summit Ativo (Ilimitado)')
-                : (lang === 'en' ? 'Enable Web Summit VIP Mode' : 'Ativar Modo Web Summit VIP')}
+                ? (lang === 'en' ? '✓ Demo Mode (Unlimited) Active' : '✓ Modo Demonstração Ativo (Ilimitado)')
+                : (lang === 'en' ? 'Enable Demo Mode (Unlimited)' : 'Ativar Modo Demonstração (Ilimitado)')}
             </button>
           )}
         </div>

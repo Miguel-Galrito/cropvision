@@ -130,11 +130,11 @@ export async function generateConsolidatedFarmPdf(
   // Left column
   doc.text(`${isEn ? 'Estate Name:' : 'Herdade:'} ${farm.name}`, marginX + 4, cursorY + 10);
   doc.text(`${isEn ? 'Entity:' : 'Entidade:'} ${farm.companyName || farm.name}`, marginX + 4, cursorY + 14);
-  doc.text(`NIF / Tax ID: ${farm.taxId || 'PT 500 123 456'} • ${farm.locationLabel}`, marginX + 4, cursorY + 18);
+  doc.text(`NIF / Tax ID: ${farm.taxId || 'PT 999 999 990'} • ${farm.locationLabel}`, marginX + 4, cursorY + 18);
 
   // Right column
-  doc.text(`${isEn ? 'Agronomist:' : 'Técnico Responsável:'} ${farm.agronomistName || 'Eng. Agrónomo Miguel Silva'}`, marginX + 96, cursorY + 10);
-  doc.text(`${isEn ? 'Professional License:' : 'Cédula Profissional:'} ${farm.agronomistLicense || 'OE-AGR-49120'}`, marginX + 96, cursorY + 14);
+  doc.text(`${isEn ? 'Agronomist:' : 'Técnico Responsável:'} ${farm.agronomistName || 'Técnico Agrónomo (demonstração)'}`, marginX + 96, cursorY + 10);
+  doc.text(`${isEn ? 'Professional License:' : 'Cédula Profissional:'} ${farm.agronomistLicense || 'DEMO-0000'}`, marginX + 96, cursorY + 14);
   doc.text(`${isEn ? 'Audit Date:' : 'Data de Emissão:'} ${dateStr} • Hash: ${auditHashShort}`, marginX + 96, cursorY + 18);
 
   cursorY += 26;

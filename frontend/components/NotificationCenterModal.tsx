@@ -80,7 +80,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
       rule_name: isPt ? 'Queda Acelerada de NDVI (> 5%)' : 'Accelerated NDVI Drop (> 5%)',
       rule_type: 'ndvi_drop',
       severity: 'critical',
-      parcel_name: isPt ? 'Talhão 1 - Vinha do Almotrém' : 'Field 1 - West Vineyard',
+      parcel_name: isPt ? 'Talhão 1 - Vinha Norte' : 'Field 1 - West Vineyard',
       current_value: 11.2,
       threshold_value: 5.0,
       message: isPt
@@ -110,7 +110,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
       rule_name: isPt ? 'Balanço Hídrico & Saturação SAR' : 'Water Balance & SAR Saturation',
       rule_type: 'soil_moisture_sar',
       severity: 'info',
-      parcel_name: isPt ? 'Talhão 2 - Olival dos Arrifes' : 'Field 2 - High-Density Olive Grove',
+      parcel_name: isPt ? 'Talhão 2 - Olival Nascente' : 'Field 2 - High-Density Olive Grove',
       current_value: 19.0,
       threshold_value: 30.0,
       message: isPt

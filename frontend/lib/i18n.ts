@@ -28,8 +28,8 @@ export const translations = {
     save: 'Guardar Alterações',
 
     // Web Summit vs Standard Mode
-    webSummitActive: 'Modo Web Summit VIP (Análises Ilimitadas Ativo)',
-    webSummitToggle: 'Ativar Modo Web Summit VIP (Ilimitado)',
+    webSummitActive: 'Modo Demonstração (Análises Ilimitadas Ativo)',
+    webSummitToggle: 'Ativar Modo Demonstração (Ilimitado)',
     standardModeActive: 'Modo Comercial Padrão (Limite de 3 Análises/Dia)',
     quotaExceededTitle: 'Limite Diário Gratuito Atingido (3/3)',
     quotaExceededDesc: 'Atingiu o limite de 3 consultas diárias gratuitas. Para continuar a monitorizar parcelas, exportar Shapefiles VRA e aceder ao radar SAR Sentinel-1, subscreva o CropVision no Whop.',
@@ -175,7 +175,7 @@ export const translations = {
     settingsSub: 'Parâmetros biofísicos para calibração de Kc e cálculo VRA',
     langSelectLabel: 'Idioma da Interface (Language)',
     modeSelectLabel: 'Modo Operacional da Plataforma',
-    modeWebSummitVip: 'Web Summit VIP / Pitch (Análises Ilimitadas)',
+    modeWebSummitVip: 'Demonstração (Análises Ilimitadas)',
     modeStandardQuota: 'Comercial Padrão (Limite de 3 Análises Diárias)',
     farmNameLabel: 'Nome da Herdade / Quinta',
     parcelNameLabel: 'Talhão / Parcela Ativa',
@@ -261,8 +261,8 @@ export const translations = {
     save: 'Save Changes',
 
     // Web Summit vs Standard Mode
-    webSummitActive: 'Web Summit VIP Mode (Unlimited Analyses Active)',
-    webSummitToggle: 'Enable Web Summit VIP Mode (Unlimited)',
+    webSummitActive: 'Demo Mode (Unlimited Analyses Active)',
+    webSummitToggle: 'Enable Demo Mode (Unlimited)',
     standardModeActive: 'Standard Commercial Mode (3 Daily Analyses Limit)',
     quotaExceededTitle: 'Daily Free Limit Reached (3/3)',
     quotaExceededDesc: 'You have reached the maximum limit of 3 free daily satellite analyses. To continue monitoring fields, exporting VRA tractor Shapefiles, and accessing Sentinel-1 SAR cloud-penetrating radar, subscribe to CropVision on Whop.',
@@ -408,7 +408,7 @@ export const translations = {
     settingsSub: 'Biophysical parameters for Kc calibration, VRA algorithms, and platform language',
     langSelectLabel: 'Interface Language (Idioma da Interface)',
     modeSelectLabel: 'Platform Operating Mode',
-    modeWebSummitVip: 'Web Summit VIP / Pitch (Unlimited Analyses)',
+    modeWebSummitVip: 'Demo (Unlimited Analyses)',
     modeStandardQuota: 'Standard Commercial (3 Daily Analyses Limit)',
     farmNameLabel: 'Farm / Estate Name',
     parcelNameLabel: 'Active Parcel / Field Name',

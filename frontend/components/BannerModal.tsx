@@ -83,7 +83,7 @@ export const BannerModal: React.FC<BannerModalProps> = ({ isOpen, onClose }) => 
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                Imagens de alta resolução e banners oficiais para pitch decks, Web Summit e marketing.
+                Imagens de alta resolução e banners oficiais para pitch decks e marketing.
               </p>
             </div>
           </div>

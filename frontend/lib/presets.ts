@@ -3,7 +3,7 @@ import { PresetLocation } from './types';
 export const PRESET_LOCATIONS: PresetLocation[] = [
   {
     id: 'esporao-alentejo',
-    name: 'Herdade do Esporão',
+    name: 'Herdade Modelo',
     region: 'Reguengos de Monsaraz, Évora',
     country: 'Portugal',
     cropType: 'Vinha & Olival Intensivo',

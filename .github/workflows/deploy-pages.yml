@@ -1,8 +1,8 @@
 name: Deploy SatHealth Dashboard to GitHub Pages
 
+# Manual only: the app now has server API routes (Copernicus proxy) that a
+# static export can't host, so production lives on Vercel.
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:

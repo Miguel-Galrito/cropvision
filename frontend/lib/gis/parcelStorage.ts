@@ -36,14 +36,14 @@ export interface FarmModel {
 export type AppExecutionMode = 'demo' | 'real';
 
 const FARMS_STORAGE_KEY = 'cropvision_user_farms_v2';
-const DEMO_FARMS_STORAGE_KEY = 'cropvision_demo_farms_v2';
+const DEMO_FARMS_STORAGE_KEY = 'cropvision_demo_farms_v3';
 const REAL_FARMS_STORAGE_KEY = 'cropvision_real_farms_v2';
 const ACTIVE_FARM_KEY = 'cropvision_active_farm_id_v2';
 const ACTIVE_PARCEL_KEY = 'cropvision_active_parcel_id_v2';
 const APP_MODE_KEY = 'cropvision_app_mode';
 
 /**
- * Returns current execution mode. Defaults to 'demo' (Herdade do Esporão) on first load.
+ * Returns current execution mode. Defaults to 'demo' (Herdade Modelo) on first load.
  */
 export function getAppMode(): AppExecutionMode {
   if (typeof window === 'undefined') return 'demo';
@@ -68,18 +68,18 @@ export function getInitialFarms(): FarmModel[] {
   return [
     {
       id: 'farm-esporao',
-      name: 'Herdade do Esporão',
+      name: 'Herdade Modelo',
       locationLabel: 'Reguengos de Monsaraz, Alentejo',
       center: [38.3842, -7.5519],
-      companyName: 'Finagra, S.A. (Herdade do Esporão)',
-      taxId: 'PT 500 123 456',
-      cadastralAddress: 'Apartado 157, 7200-999 Reguengos de Monsaraz',
-      agronomistName: 'Eng. Agrónomo Miguel Silva',
-      agronomistLicense: 'OE-AGR-49120',
+      companyName: 'Herdade Modelo, Lda. (demonstração)',
+      taxId: 'PT 999 999 990',
+      cadastralAddress: 'Morada de demonstração, Reguengos de Monsaraz',
+      agronomistName: 'Técnico Agrónomo (demonstração)',
+      agronomistLicense: 'DEMO-0000',
       parcels: [
         {
           id: 'parcel-esporao-1',
-          name: 'Talhão 1 - Vinha do Almotrém',
+          name: 'Talhão 1 - Vinha Norte',
           farmId: 'farm-esporao',
           cropType: 'vinha',
           trainingSystem: 'intensivo',
@@ -97,7 +97,7 @@ export function getInitialFarms(): FarmModel[] {
         },
         {
           id: 'parcel-esporao-2',
-          name: 'Talhão 2 - Olival dos Arrifes',
+          name: 'Talhão 2 - Olival Nascente',
           farmId: 'farm-esporao',
           cropType: 'olival',
           trainingSystem: 'superintensivo',

@@ -238,7 +238,7 @@ export async function generateAgronomicPdfReport(config: ReportConfig): Promise<
       { content: isEn ? 'Farm / Entity:' : 'Exploração / Entidade:', styles: { fontStyle: 'bold' as const } },
       config.companyName ? `${config.farmName} (${config.companyName})` : config.farmName,
       { content: isEn ? 'Tax ID / NIF:' : 'NIF / Contribuinte:', styles: { fontStyle: 'bold' as const } },
-      config.taxId || 'PT 500 123 456',
+      config.taxId || 'PT 999 999 990',
       { content: isEn ? 'Cadastral Area:' : 'Área Cadastrada:', styles: { fontStyle: 'bold' as const } },
       `${config.prescription.total_area_hectares.toFixed(1)} ha`,
     ],
@@ -789,7 +789,7 @@ export async function generateAgronomicPdfReport(config: ReportConfig): Promise<
   doc.setFontSize(6);
   doc.setTextColor(100, 116, 139);
   doc.text(`${isEn ? 'Entity:' : 'Entidade:'} ${config.companyName || config.farmName}`, marginX + 4, boxY + 8.5);
-  doc.text(`NIF: ${config.taxId || 'PT 500 123 456'}`, marginX + 4, boxY + 12.5);
+  doc.text(`NIF: ${config.taxId || 'PT 999 999 990'}`, marginX + 4, boxY + 12.5);
 
   // Signature line left
   doc.setDrawColor(148, 163, 184);
@@ -822,12 +822,12 @@ export async function generateAgronomicPdfReport(config: ReportConfig): Promise<
   doc.setFontSize(6);
   doc.setTextColor(100, 116, 139);
   doc.text(
-    `${isEn ? 'Agronomist:' : 'Agrónomo:'} ${config.agronomistName || 'Eng. Agrónomo Miguel Silva'}`,
+    `${isEn ? 'Agronomist:' : 'Agrónomo:'} ${config.agronomistName || 'Técnico Agrónomo (demonstração)'}`,
     col2X + 4,
     boxY + 8.5
   );
   doc.text(
-    `${isEn ? 'License:' : 'Cédula:'} ${config.licenseNumber || 'OE-AGR-49120'}`,
+    `${isEn ? 'License:' : 'Cédula:'} ${config.licenseNumber || 'DEMO-0000'}`,
     col2X + 4,
     boxY + 12.5
   );

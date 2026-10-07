@@ -397,14 +397,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               title={
                 appMode === 'demo'
                   ? (lang === 'en' ? 'Click to switch to Real Commercial Farm Mode' : 'Clique para alternar para Minha Exploração (Real)')
-                  : (lang === 'en' ? 'Click to switch to Web Summit Pitch Demo' : 'Clique para alternar para Modo Pitch Demo')
+                  : (lang === 'en' ? 'Click to switch to Demo Mode' : 'Clique para alternar para Modo Pitch Demo')
               }
             >
               {appMode === 'demo' ? (
                 <>
                   <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0 animate-pulse" />
                   <span className="font-mono text-[11px]">
-                    {lang === 'en' ? 'Pitch Demo' : 'Modo Web Summit (Demo)'}
+                    {lang === 'en' ? 'Pitch Demo' : 'Modo Demonstração'}
                   </span>
                 </>
               ) : (
@@ -941,7 +941,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     )}
                     <span>
                       {appMode === 'demo'
-                        ? (lang === 'en' ? 'Demo Pitch Active' : 'Modo Web Summit (Demo) Ativo')
+                        ? (lang === 'en' ? 'Demo Pitch Active' : 'Modo Demonstração Ativo')
                         : (lang === 'en' ? 'My Farm (Real) Active' : 'Minha Exploração (Real)')}
                     </span>
                   </div>

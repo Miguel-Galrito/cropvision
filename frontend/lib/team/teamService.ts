@@ -52,7 +52,7 @@ const DEFAULT_MEMBERS: TeamMember[] = [
     id: 'member-2',
     farmId: 'farm-esporao',
     email: 'agronomo.silva@esporao.pt',
-    name: 'Eng. Agrónomo Miguel Silva',
+    name: 'Técnico Agrónomo (demonstração)',
     role: 'agronomist',
     status: 'active',
     phone: '+351 918 222 333',

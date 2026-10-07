@@ -135,7 +135,7 @@ export default function DashboardPage() {
   const [lon, setLon] = useState<number>(-7.5519);
   const [zoom, setZoom] = useState<number>(14);
   const [currentPolygon, setCurrentPolygon] = useState<[number, number][] | null>(null);
-  const [locationName, setLocationName] = useState<string | null>('Herdade do Esporão, Alentejo, Portugal');
+  const [locationName, setLocationName] = useState<string | null>('Herdade Modelo, Alentejo, Portugal');
 
   // Interactive Polygon Drawing Mode
   const [isDrawingModeActive, setIsDrawingModeActive] = useState<boolean>(false);
@@ -144,8 +144,8 @@ export default function DashboardPage() {
   const [cropType, setCropType] = useState<CropType>('vinha');
   const [trainingSystem, setTrainingSystem] = useState<TrainingSystem>('intensivo');
   const [irrigationType, setIrrigationType] = useState<IrrigationType>('gota-a-gota');
-  const [agronomistName, setAgronomistName] = useState<string>('Eng. Agrónomo Miguel Silva');
-  const [licenseNumber, setLicenseNumber] = useState<string>('OE-AGR-49120');
+  const [agronomistName, setAgronomistName] = useState<string>('Técnico Agrónomo (demonstração)');
+  const [licenseNumber, setLicenseNumber] = useState<string>('DEMO-0000');
 
   // 7. Scouting State
   const [scoutingRecords, setScoutingRecords] = useState<ScoutingRecord[]>([]);
@@ -803,7 +803,7 @@ export default function DashboardPage() {
       prescription,
       irrigation,
       scoutingRecords,
-      farmName: currentFarm?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo'),
+      farmName: currentFarm?.name || (lang === 'en' ? 'Model Estate (Demo)' : 'Herdade Monte Novo'),
       parcelName: activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1'),
       companyName: currentFarm?.companyName,
       taxId: currentFarm?.taxId,
@@ -904,8 +904,8 @@ export default function DashboardPage() {
             </span>
             <span className="font-bold tracking-wide truncate">
               {lang === 'en'
-                ? '🚀 Web Summit Pitch Mode Active — Pre-loaded simulation data for instant demonstration'
-                : '🚀 Ambiente de Demonstração Ativo — Dados de simulação pré-carregados para pitch da Web Summit'}
+                ? '🚀 Demo Mode Active — Reference estate with pre-loaded data for instant demonstration'
+                : '🚀 Modo Demonstração — Herdade de referência com dados pré-carregados'}
             </span>
           </div>
           <button
@@ -1070,7 +1070,7 @@ export default function DashboardPage() {
         onLanguageChange={handleLanguageChange}
         isWebSummitMode={isWebSummitMode}
         onToggleWebSummitMode={handleToggleWebSummitMode}
-        farmName={activeFarm?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo')}
+        farmName={activeFarm?.name || (lang === 'en' ? 'Model Estate (Demo)' : 'Herdade Monte Novo')}
         parcelName={activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1')}
         cropType={cropType}
         trainingSystem={trainingSystem}
@@ -1092,7 +1092,7 @@ export default function DashboardPage() {
           setFieldBookPhytoPrefill(null);
           setFieldBookFertPrefill(null);
         }}
-        farmName={activeFarm?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo')}
+        farmName={activeFarm?.name || (lang === 'en' ? 'Model Estate (Demo)' : 'Herdade Monte Novo')}
         parcelName={activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1')}
         cropName={
           cropType === 'vinha'
@@ -1184,7 +1184,7 @@ export default function DashboardPage() {
         isOpen={isComparatorOpen}
         onClose={() => setIsComparatorOpen(false)}
         parcelName={activeParcel?.name || (lang === 'en' ? 'Field 1' : 'Talhão 1')}
-        farmName={activeFarm?.name || (lang === 'en' ? 'Esporão Estate' : 'Herdade Monte Novo')}
+        farmName={activeFarm?.name || (lang === 'en' ? 'Model Estate (Demo)' : 'Herdade Monte Novo')}
         currentNdvi={analysisData?.ndvi?.mean || 0.74}
         currentNdwi={analysisData?.multi_indices?.ndwi ?? 0.18}
         timeseries={timeseriesData}

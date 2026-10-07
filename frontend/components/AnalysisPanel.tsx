@@ -1084,7 +1084,16 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                             className="w-2.5 h-2.5 rounded-full"
                             style={{ backgroundColor: z.color_hex }}
                           />
-                          <span>{lang === 'en' ? `Zone ${z.zone_id}` : `Zona ${z.zone_id}`}</span>
+                          <span title={z.name}>
+                            {(lang === 'en' ? 'Zone ' : 'Zona ') + z.zone_id.replace(/^ZONE_([A-Z]).*$/, '$1')}
+                            <span className="ml-1 font-normal text-slate-400">
+                              {z.zone_id.includes('HIGH')
+                                ? (lang === 'en' ? '· High vigour' : '· Vigor alto')
+                                : z.zone_id.includes('MED')
+                                  ? (lang === 'en' ? '· Medium vigour' : '· Vigor médio')
+                                  : (lang === 'en' ? '· Low vigour' : '· Vigor baixo')}
+                            </span>
+                          </span>
                         </td>
                         <td className="py-2 px-2 text-slate-300">{z.percentage_of_parcel}%</td>
                         <td className="py-2 px-2 text-slate-300">{z.estimated_hectares.toFixed(1)}</td>

@@ -63,9 +63,9 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
   irrigationType,
   agronomistName,
   licenseNumber,
-  companyName = 'Finagra, S.A. (Herdade do Esporão)',
-  taxId = 'PT 500 123 456',
-  cadastralAddress = 'Apartado 157, 7200-999 Reguengos de Monsaraz',
+  companyName = 'Herdade Modelo, Lda. (demonstração)',
+  taxId = 'PT 999 999 990',
+  cadastralAddress = 'Morada de demonstração, Reguengos de Monsaraz',
   customLogoUrl,
   theme = 'dark',
   onSave,
@@ -79,8 +79,8 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
   const [cType, setCType] = useState<CropType>(cropType);
   const [tSystem, setTSystem] = useState<TrainingSystem>(trainingSystem);
   const [iType, setIType] = useState<IrrigationType>(irrigationType);
-  const [agroName, setAgroName] = useState(agronomistName || 'Eng. Agrónomo Miguel Silva');
-  const [licNum, setLicNum] = useState(licenseNumber || 'OE-AGR-49120');
+  const [agroName, setAgroName] = useState(agronomistName || 'Técnico Agrónomo (demonstração)');
+  const [licNum, setLicNum] = useState(licenseNumber || 'DEMO-0000');
 
   // White-Labeling Fields
   const [compName, setCompName] = useState(companyName);
@@ -392,7 +392,7 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
                   type="text"
                   value={compName}
                   onChange={(e) => setCompName(e.target.value)}
-                  placeholder="Ex: Finagra, S.A."
+                  placeholder="Ex: Herdade Exemplo, Lda."
                   className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -404,7 +404,7 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
                   type="text"
                   value={tId}
                   onChange={(e) => setTId(e.target.value)}
-                  placeholder="Ex: PT 500 123 456"
+                  placeholder="Ex: PT 999 999 990"
                   className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -418,7 +418,7 @@ export const FarmSettingsModal: React.FC<FarmSettingsModalProps> = ({
                 type="text"
                 value={cadAddr}
                 onChange={(e) => setCadAddr(e.target.value)}
-                placeholder="Ex: Apartado 157, 7200-999 Reguengos de Monsaraz"
+                placeholder="Ex: Morada de demonstração, Reguengos de Monsaraz"
                 className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
               />
             </div>

@@ -49,7 +49,7 @@ export const TeamManagementModal: React.FC<TeamManagementModalProps> = ({
   isOpen,
   onClose,
   farmId = 'farm-esporao',
-  farmName = 'Herdade do Esporão',
+  farmName = 'Herdade Modelo',
   activeRole,
   onRoleChange,
   lang = 'pt',

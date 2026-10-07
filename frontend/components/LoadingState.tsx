@@ -11,8 +11,8 @@ interface LoadingStateProps {
 const STEPS = [
   { id: 1, title: 'Connecting to Copernicus Sentinel-2 L2A STAC catalog' },
   { id: 2, title: 'Querying recent orbital passes and filtering cloud cover' },
-  { id: 3, title: 'Reading Band 4 (Red) and Band 8 (NIR) via HTTP Range Requests (rasterio)' },
-  { id: 4, title: 'Computing NDVI matrix (NumPy) and generating spectral colormap' },
+  { id: 3, title: 'Reading Band 4 (Red) and Band 8 (NIR) via HTTP Range Requests' },
+  { id: 4, title: 'Computing NDVI matrix and generating spectral colormap' },
 ];
 
 export const LoadingState: React.FC<LoadingStateProps> = ({ lat, lon }) => {
