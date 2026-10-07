@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Navbar } from '../components/Navbar';
 import { MapWrapper } from '../components/MapWrapper';
 import { AnalysisPanel } from '../components/AnalysisPanel';
@@ -303,6 +303,7 @@ export default function DashboardPage() {
 
 
   // Analysis Runner
+  const analysisRunId = useRef(0);
   const runAnalysis = useCallback(
     async (targetLat: number, targetLon: number, customHectares?: number, bypassQuotaCheck = false) => {
       if (!bypassQuotaCheck && !checkAndIncrementQuota()) {
@@ -311,6 +312,7 @@ export default function DashboardPage() {
 
       setIsLoading(true);
       setError(null);
+      const runId = ++analysisRunId.current;
 
       try {
         const data = await analyzeVegetation({
@@ -330,14 +332,12 @@ export default function DashboardPage() {
         }
 
         setAnalysisData(data);
+        setIsLoading(false);
 
-        // Fetch historical time series in parallel
-        try {
-          const ts = await fetchTimeSeries(targetLat, targetLon, 40);
-          setTimeseriesData(ts.series);
-        } catch {
-          setTimeseriesData(null);
-        }
+        // Historical series loads in the background so the map result shows immediately
+        fetchTimeSeries(targetLat, targetLon, 40)
+          .then((ts) => { if (runId === analysisRunId.current) setTimeseriesData(ts.series); })
+          .catch(() => { if (runId === analysisRunId.current) setTimeseriesData(null); });
       } catch (err: any) {
         console.error('Analysis error:', err);
         setError({
@@ -896,23 +896,29 @@ export default function DashboardPage() {
 
       {/* PITCH WEB SUMMIT DEMO TOP BANNER */}
       {appMode === 'demo' && (
-        <div className="fixed top-16 left-0 right-0 z-30 bg-gradient-to-r from-amber-600/95 via-emerald-700/95 to-slate-900/95 backdrop-blur-md text-white text-xs px-3 sm:px-6 py-1.5 flex items-center justify-between shadow-lg border-b border-amber-500/30 select-none animate-in fade-in duration-200">
-          <div className="flex items-center space-x-2 truncate">
+        <div className="fixed top-16 left-0 right-0 z-30 bg-[#070b14]/85 backdrop-blur-xl text-slate-300 text-xs px-3 sm:px-6 py-1.5 flex items-center justify-between border-b border-white/[0.06] select-none animate-in fade-in duration-200">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent" />
+          <div className="flex items-center gap-2.5 truncate">
             <span className="flex h-2 w-2 relative shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-80"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-70"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
             </span>
-            <span className="font-bold tracking-wide truncate">
+            <span className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase text-emerald-300 shrink-0">
+              {lang === 'en' ? 'Demo' : 'Demonstração'}
+            </span>
+            <span className="hidden sm:inline h-3 w-px bg-slate-700 shrink-0" />
+            <span className="hidden sm:inline font-medium text-slate-400 truncate">
               {lang === 'en'
-                ? '🚀 Demo Mode Active — Reference estate with pre-loaded data for instant demonstration'
-                : '🚀 Modo Demonstração — Herdade de referência com dados pré-carregados'}
+                ? 'Reference estate with pre-loaded data for an instant walkthrough'
+                : 'Herdade de referência com dados pré-carregados'}
             </span>
           </div>
           <button
             onClick={() => handleToggleAppMode('real')}
-            className="ml-3 px-3 py-1 rounded-xl bg-slate-950/80 hover:bg-black text-amber-300 hover:text-white font-mono text-[11px] font-bold transition-all shrink-0 flex items-center gap-1.5 border border-amber-500/40 shadow-sm cursor-pointer"
+            className="ml-3 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-emerald-500/15 text-slate-300 hover:text-emerald-200 text-[11px] font-semibold shrink-0 flex items-center gap-1.5 border border-white/10 hover:border-emerald-400/40 cursor-pointer"
           >
-            <span>{lang === 'en' ? 'Switch to Real Farm' : 'Mudar para Minha Exploração (Real)'}</span>
+            <span className="hidden sm:inline">{lang === 'en' ? 'Switch to Real Farm' : 'Mudar para Minha Exploração (Real)'}</span>
+            <span className="sm:hidden">{lang === 'en' ? 'Real farm' : 'Minha exploração'}</span>
             <ArrowRight className="w-3 h-3" />
           </button>
         </div>
@@ -942,8 +948,8 @@ export default function DashboardPage() {
 
       {/* 3. LOADING INDICATOR */}
       {isLoading && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40">
-          <LoadingState lat={lat} lon={lon} />
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-40">
+          <LoadingState lat={lat} lon={lon} lang={lang} />
         </div>
       )}
 

@@ -77,6 +77,8 @@ export const Map: React.FC<MapProps> = ({
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
+  // Leaflet loads asynchronously; overlay effects re-run once the map exists
+  const [mapReady, setMapReady] = useState(false);
   const markerRef = useRef<Marker | null>(null);
   const bboxRectRef = useRef<Rectangle | null>(null);
   const polygonLayerRef = useRef<LeafletPolygon | null>(null);
@@ -226,6 +228,7 @@ export const Map: React.FC<MapProps> = ({
       });
 
       mapInstanceRef.current = map;
+      setMapReady(true);
     });
 
     return () => {
@@ -234,6 +237,7 @@ export const Map: React.FC<MapProps> = ({
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
+      setMapReady(false);
     };
   }, []);
 
@@ -287,17 +291,18 @@ export const Map: React.FC<MapProps> = ({
           [maxLat, maxLon],
         ];
         const rect = L.rectangle(bounds, {
-          color: '#10b981',
-          weight: 1.5,
+          color: '#5eead4',
+          weight: 1,
+          opacity: 0.45,
           fillColor: '#10b981',
-          fillOpacity: 0.12,
-          dashArray: '4, 4',
+          fillOpacity: 0.03,
+          dashArray: '2, 6',
           interactive: false,
         }).addTo(map);
         bboxRectRef.current = rect;
       }
     });
-  }, [bbox]);
+  }, [bbox, mapReady]);
 
   // Update Active Parcel Polygon
   useEffect(() => {
@@ -325,14 +330,16 @@ export const Map: React.FC<MapProps> = ({
           fillColor = 'transparent';
         }
 
-        const opacityDecimal = visualMode === 'rgb' ? 0.05 : (ndviOpacity / 100) * 0.45;
+        const opacityDecimal = visualMode === 'rgb' ? 0.05 : (ndviOpacity / 100) * 0.18;
 
         const poly = L.polygon(polygon, {
           color: strokeColor,
-          weight: 2.5,
+          weight: 2,
           fillColor: fillColor,
           fillOpacity: opacityDecimal,
           dashArray: visualMode === 'rgb' ? '6, 6' : undefined,
+          lineJoin: 'round',
+          className: 'cv-parcel',
           interactive: false,
         }).addTo(map);
 
@@ -345,7 +352,7 @@ export const Map: React.FC<MapProps> = ({
         }
       }
     });
-  }, [polygon, visualMode, ndviOpacity]);
+  }, [polygon, visualMode, ndviOpacity, mapReady]);
 
   // Reset temporary drawing layers when drawing mode is deactivated
   useEffect(() => {
@@ -492,7 +499,7 @@ export const Map: React.FC<MapProps> = ({
         scoutingMarkersRef.current.push(sm);
       });
     });
-  }, [scoutingRecords]);
+  }, [scoutingRecords, mapReady]);
 
   // Finish polygon drawing
   const handleFinishDrawing = () => {

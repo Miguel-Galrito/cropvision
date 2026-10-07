@@ -101,7 +101,9 @@ export async function searchCopernicusSentinel2Scenes(
   limit: number = 5
 ): Promise<CopernicusSentinelScene[]> {
   try {
-    const filter = `Collection/Name eq 'SENTINEL-2' and contains(Name,'MSIL2A') and OData.CSC.Intersects(area=geography'SRID=4326;POINT(${lon.toFixed(5)} ${lat.toFixed(5)})') and Attributes/OData.CSC.DoubleAttribute/any(att:att/Name eq 'cloudCover' and att/OData.CSC.DoubleAttribute/Value le ${maxCloudCover.toFixed(1)})`;
+    // Restrict to the last 90 days: an unbounded archive search takes 20s+ on CDSE
+    const since = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
+    const filter = `Collection/Name eq 'SENTINEL-2' and contains(Name,'MSIL2A') and ContentDate/Start gt ${since} and OData.CSC.Intersects(area=geography'SRID=4326;POINT(${lon.toFixed(5)} ${lat.toFixed(5)})') and Attributes/OData.CSC.DoubleAttribute/any(att:att/Name eq 'cloudCover' and att/OData.CSC.DoubleAttribute/Value le ${maxCloudCover.toFixed(1)})`;
     const url = `${CDSE_ODATA_URL}?$filter=${encodeURIComponent(filter)}&$orderby=ContentDate/Start desc&$top=${limit}&$expand=Attributes`;
 
     const controller = new AbortController();

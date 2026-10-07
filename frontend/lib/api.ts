@@ -24,6 +24,14 @@ import { fetchAgroClimate } from './weather/openMeteo';
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
+// Only try the FastAPI backend when one is configured, or when running locally next to it.
+// In production without a backend, going straight to the direct STAC path saves a failed round-trip.
+function hasBackend(): boolean {
+  if (process.env.NEXT_PUBLIC_API_URL) return true;
+  if (typeof window === 'undefined') return false;
+  return ['localhost', '127.0.0.1'].includes(window.location.hostname);
+}
+
 export class ApiError extends Error {
   status: number;
   data: any;
@@ -40,6 +48,7 @@ export async function checkHealth(): Promise<HealthResponse> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
+    if (!hasBackend()) throw new Error('No backend configured');
     const res = await fetch(`${API_BASE}/health`, {
       method: 'GET',
       signal: controller.signal,
@@ -394,6 +403,7 @@ export async function analyzeVegetation(
   const timeoutId = setTimeout(() => controller.abort(), 45000);
 
   try {
+    if (!hasBackend()) throw new Error('No backend configured');
     const res = await fetch(`${API_BASE}/analyze`, {
       method: 'POST',
       headers: {
@@ -475,6 +485,7 @@ export async function fetchTimeSeries(
   const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   try {
+    if (!hasBackend()) throw new Error('No backend configured');
     const res = await fetch(`${API_BASE}/timeseries`, {
       method: 'POST',
       headers: {

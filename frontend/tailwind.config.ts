@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-sans)', 'Segoe UI', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'Cascadia Mono', 'Consolas', 'monospace'],
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
